@@ -226,6 +226,7 @@ export default function App() {
           canBeOverseer: standing === 'E',
           canBeAssistant: standing === 'MS' || standing === 'E',
           canSeparateFromFamily: false,
+          activityScore: 5,
         };
       })
       .filter(p => p.firstName || p.lastName); // Final sanity check
@@ -241,6 +242,10 @@ export default function App() {
 
   const toggleRule = (id: string, field: keyof Pick<Publisher, 'canBeOverseer' | 'canBeAssistant' | 'canSeparateFromFamily'>) => {
     setPublishers(prev => prev.map(p => p.id === id ? { ...p, [field]: !p[field] } : p));
+  };
+
+  const adjustActivity = (id: string, score: number) => {
+    setPublishers(prev => prev.map(p => p.id === id ? { ...p, activityScore: score } : p));
   };
 
   const handleGenerate = () => {
@@ -542,6 +547,7 @@ export default function App() {
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Can Lead</th>
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Can Assist</th>
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Split Fam</th>
+                        <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center whitespace-nowrap">Activity (1-5)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -613,6 +619,24 @@ export default function App() {
                               </div>
                             </div>
                           </td>
+                          <td className="px-3 py-2">
+                            <div className="flex justify-center space-x-1">
+                              {[1, 2, 3, 4, 5].map(score => (
+                                <button
+                                  key={score}
+                                  onClick={() => adjustActivity(p.id, score)}
+                                  className={cn(
+                                    "w-5 h-5 rounded-[2px] text-[10px] font-bold transition-all",
+                                    p.activityScore === score 
+                                      ? "bg-accent text-white" 
+                                      : "bg-bg text-text-sub hover:bg-accent-light"
+                                  )}
+                                >
+                                  {score}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -636,6 +660,7 @@ export default function App() {
                 const assistant = publishers.find(p => p.id === group.assistantId);
                 const members = group.publisherIds.length;
                 const pioneerCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.publisherType === 'RP').length;
+                const totalActivity = group.publisherIds.reduce((sum, pid) => sum + (publishers.find(p => p.id === pid)?.activityScore || 0), 0);
 
                 return (
                   <div 
@@ -657,6 +682,7 @@ export default function App() {
                        <div className="flex gap-2 text-[10px] font-bold text-text-sub uppercase">
                           <span>PPL: {members}</span>
                           <span className="text-role-rp">RP: {pioneerCount}</span>
+                          <span className="text-accent">Score: {totalActivity}</span>
                        </div>
                     </div>
 

@@ -16,6 +16,7 @@ export interface Publisher {
   canBeOverseer: boolean;
   canBeAssistant: boolean;
   canSeparateFromFamily: boolean;
+  activityScore: number; // 1-5
 }
 
 export interface Family {

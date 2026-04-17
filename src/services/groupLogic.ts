@@ -85,11 +85,18 @@ export function generateGroups(
     p.publisherType === 'RP' && !assignedPublisherIds.has(p.id)
   );
 
-  // Sort groups by size to balance
+  // Sort groups by total activity score to balance
   const getSortedGroupIndices = () => {
     return groups
       .map((_, i) => i)
-      .sort((a, b) => groups[a].publisherIds.length - groups[b].publisherIds.length);
+      .sort((a, b) => {
+        const scoreA = groups[a].publisherIds.reduce((sum, id) => sum + (publishersMap.get(id)?.activityScore || 0), 0);
+        const scoreB = groups[b].publisherIds.reduce((sum, id) => sum + (publishersMap.get(id)?.activityScore || 0), 0);
+        
+        if (scoreA !== scoreB) return scoreA - scoreB;
+        // Tie-breaker: use group size
+        return groups[a].publisherIds.length - groups[b].publisherIds.length;
+      });
   };
 
   pioneers.forEach(p => {
