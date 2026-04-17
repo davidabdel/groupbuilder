@@ -1,0 +1,6 @@
+{
+  "name": "Build My Group",
+  "description": "Automated field service group builder for congregations. Import publishers, manage families, and generate balanced groups based on roles and rules.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
