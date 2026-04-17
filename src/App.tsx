@@ -66,7 +66,16 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [publishers, setPublishers] = useState<Publisher[]>(() => {
     const saved = localStorage.getItem('bmg_publishers');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed.map((p: any) => ({
+        ...p,
+        activityScore: p.activityScore ?? 5
+      }));
+    } catch (e) {
+      return [];
+    }
   });
   const [result, setResult] = useState<GroupResult | null>(() => {
     const saved = localStorage.getItem('bmg_result');
