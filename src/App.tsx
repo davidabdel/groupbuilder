@@ -80,6 +80,8 @@ export default function App() {
   const [sortField, setSortField] = useState<keyof Publisher>('lastName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  const [selectedPublisherIds, setSelectedPublisherIds] = useState<string[]>([]);
+
   // Persistence
   useEffect(() => {
     localStorage.setItem('bmg_publishers', JSON.stringify(publishers));
@@ -290,6 +292,60 @@ export default function App() {
   };
 
   // --- Helpers ---
+
+  const toggleSelection = (ids: string[]) => {
+    setSelectedPublisherIds(prev => {
+      const allSelected = ids.every(id => prev.includes(id));
+      if (allSelected) {
+        return prev.filter(id => !ids.includes(id));
+      } else {
+        return [...new Set([...prev, ...ids])];
+      }
+    });
+  };
+
+  const handleMoveToGroup = (targetGroupId: string) => {
+    if (selectedPublisherIds.length === 0 || !result) return;
+
+    setResult(prev => {
+      if (!prev) return null;
+      
+      const newGroups = prev.groups.map(g => {
+        // Remove from any group where they currently exist
+        const updatedPublisherIds = g.publisherIds.filter(id => !selectedPublisherIds.includes(id));
+        
+        // If they were overseer or assistant, we clear that role in the source group
+        let newOverseerId = g.overseerId;
+        let newAssistantId = g.assistantId;
+        if (selectedPublisherIds.includes(g.overseerId || '')) newOverseerId = undefined;
+        if (selectedPublisherIds.includes(g.assistantId || '')) newAssistantId = undefined;
+
+        // If this is the target group, add them
+        if (g.id === targetGroupId) {
+          return {
+            ...g,
+            publisherIds: [...new Set([...updatedPublisherIds, ...selectedPublisherIds])],
+            overseerId: newOverseerId,
+            assistantId: newAssistantId
+          };
+        }
+
+        return {
+          ...g,
+          publisherIds: updatedPublisherIds,
+          overseerId: newOverseerId,
+          assistantId: newAssistantId
+        };
+      });
+
+      return {
+        ...prev,
+        groups: newGroups
+      };
+    });
+
+    setSelectedPublisherIds([]);
+  };
 
   const sortedPublishers = useMemo(() => {
     return [...publishers]
@@ -587,7 +643,17 @@ export default function App() {
                     className="bg-white border border-border rounded-[4px] p-4 shadow-sm hover:shadow-md transition-all flex flex-col h-full"
                   >
                     <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
-                       <h3 className="text-[14px] font-bold uppercase tracking-wide">{group.name}</h3>
+                       <div className="flex flex-col">
+                          <h3 className="text-[14px] font-bold uppercase tracking-wide">{group.name}</h3>
+                          {selectedPublisherIds.length > 0 && !group.publisherIds.some(id => selectedPublisherIds.includes(id)) && (
+                            <button 
+                              onClick={() => handleMoveToGroup(group.id)}
+                              className="text-[10px] font-bold text-accent hover:underline uppercase text-left mt-1"
+                            >
+                              Move Selected Here
+                            </button>
+                          )}
+                       </div>
                        <div className="flex gap-2 text-[10px] font-bold text-text-sub uppercase">
                           <span>PPL: {members}</span>
                           <span className="text-role-rp">RP: {pioneerCount}</span>
@@ -603,10 +669,16 @@ export default function App() {
                             !overseer && "text-danger italic opacity-70"
                           )}>
                             {overseer ? (
-                              <>
+                              <div 
+                                onClick={() => toggleSelection([overseer.id])}
+                                className={cn(
+                                  "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
+                                  selectedPublisherIds.includes(overseer.id) ? "bg-accent-light" : "hover:bg-bg"
+                                )}
+                              >
                                 <span className="tag tag-e text-[9px] px-1 rounded-[2px] bg-role-e text-white font-black">E</span>
-                                {overseer.fullName}
-                              </>
+                                <span className={cn(selectedPublisherIds.includes(overseer.id) && "text-accent font-bold")}>{overseer.fullName}</span>
+                              </div>
                             ) : "No Overseer Assigned"}
                           </div>
                         </div>
@@ -618,15 +690,21 @@ export default function App() {
                             !assistant && "text-danger italic opacity-70"
                           )}>
                             {assistant ? (
-                              <>
+                              <div 
+                                onClick={() => toggleSelection([assistant.id])}
+                                className={cn(
+                                  "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
+                                  selectedPublisherIds.includes(assistant.id) ? "bg-accent-light" : "hover:bg-bg"
+                                )}
+                              >
                                 <span className={cn(
                                   "text-[9px] px-1 rounded-[2px] text-white font-black",
                                   assistant.standing === 'E' ? "bg-role-e" : "bg-role-ms"
                                 )}>
                                   {assistant.standing}
                                 </span>
-                                {assistant.fullName}
-                              </>
+                                <span className={cn(selectedPublisherIds.includes(assistant.id) && "text-accent font-bold")}>{assistant.fullName}</span>
+                              </div>
                             ) : "No Assistant Assigned"}
                           </div>
                         </div>
@@ -644,12 +722,27 @@ export default function App() {
                                const fName = publishers.find(p => p.familyId === fid)?.lastName || 'Family';
                                return (
                                  <div key={fid} className="p-2 bg-bg border-l-3 border-accent rounded-[3px] space-y-1 my-2">
-                                    <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
+                                    <div className="flex justify-between items-center mb-1">
+                                       <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
+                                       <button 
+                                         onClick={() => toggleSelection(familyMembers)}
+                                         className="text-[9px] font-bold text-text-sub hover:text-accent uppercase"
+                                       >
+                                         {familyMembers.every(id => selectedPublisherIds.includes(id)) ? 'Deselect All' : 'Select All'}
+                                       </button>
+                                    </div>
                                     {familyMembers.map(pid => {
                                        const p = publishers.find(pub => pub.id === pid);
                                        if (!p) return null;
                                        return (
-                                          <div key={pid} className="flex justify-between items-center text-[12px]">
+                                          <div 
+                                             key={pid} 
+                                             onClick={() => toggleSelection([pid])}
+                                             className={cn(
+                                               "flex justify-between items-center text-[12px] cursor-pointer transition-colors p-1 rounded",
+                                               selectedPublisherIds.includes(pid) ? "bg-white text-accent font-bold" : "hover:bg-white/50"
+                                             )}
+                                          >
                                              <span>{p.firstName}</span>
                                              {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
                                           </div>
@@ -670,13 +763,20 @@ export default function App() {
                                 const p = publishers.find(pub => pub.id === pid);
                                 if (!p) return null;
                                 return (
-                                  <div key={pid} className="flex justify-between items-center text-[13px] py-1 border-b border-border border-dotted last:border-b-0">
-                                    <div className="flex items-center gap-2">
-                                       {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
-                                       <span>{p.fullName}</span>
+                                   <div 
+                                      key={pid} 
+                                      onClick={() => toggleSelection([pid])}
+                                      className={cn(
+                                        "flex justify-between items-center text-[13px] py-1 border-b border-border border-dotted last:border-b-0 cursor-pointer transition-colors px-1 rounded",
+                                        selectedPublisherIds.includes(pid) ? "bg-accent-light text-accent font-bold" : "hover:bg-bg"
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                         {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
+                                         <span>{p.fullName}</span>
+                                      </div>
+                                      <span className="text-[9px] text-text-sub opacity-50 font-mono italic">{p.familyId || 'Ind'}</span>
                                     </div>
-                                    <span className="text-[9px] text-text-sub opacity-50 font-mono italic">{p.familyId || 'Ind'}</span>
-                                  </div>
                                 );
                               })}
                          </div>
