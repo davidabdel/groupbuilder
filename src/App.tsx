@@ -321,7 +321,7 @@ export default function App() {
             <Users size={18} />
           </div>
           <div className="flex items-baseline space-x-2">
-            <h1 className="text-[15px] font-bold uppercase tracking-wider">Build My Group</h1>
+            <h1 className="text-[15px] font-bold uppercase tracking-wider">Group Builder</h1>
             <span className="text-[13px] font-light opacity-80 border-l border-white/20 pl-2">Congregation Management</span>
           </div>
         </div>
@@ -766,7 +766,7 @@ export default function App() {
             </button>
           )}
           <div className="text-[10px] text-text-sub text-center italic opacity-60">
-             Build My Group v1.0.4
+             Group Builder v1.0.4
           </div>
           {publishers.length > 0 && (
             <button 
