@@ -515,6 +515,12 @@ export default function App() {
     });
   };
 
+  const handleBulkScoreUpdate = (score: number) => {
+    setPublishers(prev => prev.map(p => 
+      selectedPublisherIds.includes(p.id) ? { ...p, activityScore: score } : p
+    ));
+  };
+
   const sortedPublishers = useMemo(() => {
     return [...publishers]
       .filter(p => p.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || p.familyId.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -878,7 +884,22 @@ export default function App() {
                       Clear
                     </button>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2 border-r border-accent/20 pr-4">
+                      <span className="text-[10px] font-black text-accent uppercase tracking-widest whitespace-nowrap">Set Sat Strength:</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <button 
+                            key={s}
+                            onClick={() => handleBulkScoreUpdate(s)}
+                            className="w-6 h-6 rounded-[2px] bg-white border border-accent/30 text-accent text-[11px] font-bold hover:bg-accent hover:text-white transition-all"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
                     <button 
                       onClick={handleUnassign}
                       className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
