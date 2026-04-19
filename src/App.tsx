@@ -864,6 +864,46 @@ export default function App() {
             </motion.div>
           )}
 
+          {step === 3 && (
+            <motion.div 
+              key="step3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="h-full flex flex-col items-center justify-center max-w-xl mx-auto space-y-8"
+            >
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-accent-light rounded-full flex items-center justify-center text-accent mx-auto">
+                  <Settings2 size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-[20px] font-bold tracking-tight">Configuration Ready</h2>
+                  <p className="text-[13px] text-text-sub">
+                    You've reviewed {publishers.length} publishers. Now, use the sidebar settings to fine-tune the group generation.
+                  </p>
+                </div>
+              </div>
+
+              <div className="w-full bg-white border border-border rounded-[4px] p-6 shadow-sm space-y-4 text-[13px]">
+                <div className="flex justify-between border-b border-border pb-3">
+                  <span className="text-text-sub font-medium">Total Publishers</span>
+                  <span className="font-bold">{publishers.length}</span>
+                </div>
+                <div className="flex justify-between border-b border-border pb-3">
+                  <span className="text-text-sub font-medium">Target Groups</span>
+                  <span className="font-bold text-accent">{groupsCount}</span>
+                </div>
+                <div className="flex justify-between border-b border-border pb-3">
+                  <span className="text-text-sub font-medium">Avg Group Size</span>
+                  <span className="font-bold text-accent">{Math.ceil(publishers.length / groupsCount)} publishers</span>
+                </div>
+                <div className="pt-2 text-[11px] text-text-sub italic text-center">
+                  Once you're ready, click "Generate Groups" in the bottom right.
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* STEP 4: GROUPS */}
           {step === 4 && result && (
             <motion.div 
