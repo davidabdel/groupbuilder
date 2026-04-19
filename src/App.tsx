@@ -210,9 +210,9 @@ export default function App() {
 
       const firstName = findVal(['First Name', 'FirstName']) || '';
       const lastName = findVal(['Last Name', 'LastName']) || '';
-      const role = String(findVal(['Role'])).toLowerCase();
-      const standing = findVal(['Standing']) || '';
-      const publisherType = findVal(['Publisher Type', 'PublisherType']) || '';
+      const rawRole = String(findVal(['Role'])).toLowerCase();
+      let standing = String(findVal(['Standing'])).trim().toUpperCase();
+      let publisherType = String(findVal(['Publisher Type', 'PublisherType', 'Publisher'])).trim().toUpperCase();
       const familyId = findVal(['Family ID', 'FamilyID', 'Household Name']) || lastName || 'Unknown';
       
       const pId = `p-${index}-${Math.random().toString(36).substr(2, 9)}`;
@@ -221,13 +221,13 @@ export default function App() {
         firstName: String(firstName),
         lastName: String(lastName),
         fullName: `${firstName} ${lastName}`.trim(),
-        standing: String(standing),
-        publisherType: String(publisherType),
+        standing: standing,
+        publisherType: publisherType,
         familyId: String(familyId),
         mobile: String(findVal(['Mobile']) || ''),
         email: String(findVal(['Email']) || ''),
-        canBeOverseer: String(standing).toUpperCase() === 'E',
-        canBeAssistant: String(standing).toUpperCase() === 'MS' || String(standing).toUpperCase() === 'E',
+        canBeOverseer: standing === 'E',
+        canBeAssistant: standing === 'MS' || standing === 'E',
         canSeparateFromFamily: false,
         activityScore: 5,
       };
@@ -247,8 +247,19 @@ export default function App() {
 
       const group = groupsMap.get(gNameStr)!;
       group.publisherIds.push(pId);
-      if (role.includes('overseer')) group.overseerId = pId;
-      else if (role.includes('assistant')) group.assistantId = pId;
+      
+      // Automatic role detection for Minor Adjustment if Role column is missing or ambiguous
+      // If Role column has 'overseer'/'assistant', use it.
+      // Otherwise, the first Elder in the group becomes overseer.
+      if (rawRole.includes('overseer')) {
+        group.overseerId = pId;
+      } else if (rawRole.includes('assistant')) {
+        group.assistantId = pId;
+      } else if (standing === 'E' && !group.overseerId) {
+        group.overseerId = pId;
+      } else if ((standing === 'MS' || standing === 'E') && !group.assistantId && group.overseerId !== pId) {
+        group.assistantId = pId;
+      }
     });
 
     setPublishers(pubs);
@@ -856,6 +867,8 @@ export default function App() {
                 const overseer = publishers.find(p => p.id === group.overseerId);
                 const assistant = publishers.find(p => p.id === group.assistantId);
                 const members = group.publisherIds.length;
+                const eldersCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'E').length;
+                const msCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'MS').length;
                 const pioneerCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.publisherType === 'RP').length;
                 const totalActivity = group.publisherIds.reduce((sum, pid) => sum + (publishers.find(p => p.id === pid)?.activityScore || 0), 0);
 
@@ -876,10 +889,27 @@ export default function App() {
                             </button>
                           )}
                        </div>
-                       <div className="flex gap-2 text-[10px] font-bold text-text-sub uppercase">
-                          <span>PPL: {members}</span>
-                          <span className="text-role-rp">RP: {pioneerCount}</span>
-                          <span className="text-accent">Score: {totalActivity}</span>
+                       <div className="flex gap-3 text-[9px] font-black text-text-sub uppercase border-l border-border pl-3 ml-1">
+                          <div className="flex flex-col items-center">
+                            <span className="opacity-60">PPL</span>
+                            <span className="text-[11px] text-text-main leading-none">{members}</span>
+                          </div>
+                          <div className="flex flex-col items-center text-role-e">
+                            <span className="opacity-60">E</span>
+                            <span className="text-[11px] leading-none">{eldersCount}</span>
+                          </div>
+                          <div className="flex flex-col items-center text-role-ms">
+                            <span className="opacity-60">MS</span>
+                            <span className="text-[11px] leading-none">{msCount}</span>
+                          </div>
+                          <div className="flex flex-col items-center text-role-rp">
+                            <span className="opacity-60">RP</span>
+                            <span className="text-[11px] leading-none">{pioneerCount}</span>
+                          </div>
+                          <div className="flex flex-col items-center text-accent">
+                            <span className="opacity-60">STR</span>
+                            <span className="text-[11px] leading-none">{totalActivity}</span>
+                          </div>
                        </div>
                     </div>
 
