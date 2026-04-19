@@ -183,9 +183,36 @@ export default function App() {
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
-        if (mode === 'minor') processGroupAdjustmentData(data);
-        else processImportedData(data);
+        
+        // Get raw data as 2D array to find the header row
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        
+        // Look for the row containing common headers
+        const headerRowIndex = rawData.findIndex(row => 
+          Array.isArray(row) && row.some(cell => {
+            const c = String(cell || '').toLowerCase();
+            return c.includes('first name') || c.includes('firstname') || c.includes('last name') || (c === 'group');
+          })
+        );
+
+        let finalData: any[];
+        if (headerRowIndex !== -1) {
+          const headers = rawData[headerRowIndex].map(h => String(h || '').trim());
+          finalData = rawData.slice(headerRowIndex + 1).map(row => {
+            const obj: any = {};
+            if (Array.isArray(row)) {
+              headers.forEach((header, i) => {
+                if (header) obj[header] = row[i];
+              });
+            }
+            return obj;
+          });
+        } else {
+          finalData = XLSX.utils.sheet_to_json(ws);
+        }
+
+        if (mode === 'minor') processGroupAdjustmentData(finalData);
+        else processImportedData(finalData);
       };
       reader.readAsBinaryString(file);
     }
@@ -210,6 +237,7 @@ export default function App() {
 
       const firstName = findVal(['First Name', 'FirstName']) || '';
       const lastName = findVal(['Last Name', 'LastName']) || '';
+      if (!firstName && !lastName) return;
       const rawRole = String(findVal(['Role'])).toLowerCase();
       let standing = String(findVal(['Standing'])).trim().toUpperCase();
       let publisherType = String(findVal(['Publisher Type', 'PublisherType', 'Publisher'])).trim().toUpperCase();
