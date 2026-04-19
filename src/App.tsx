@@ -900,34 +900,35 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                    <button 
-                      onClick={handleUnassign}
-                      className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
-                    >
-                      <UserMinus size={14} />
-                      <span>Unassign Selected</span>
-                    </button>
+                      <button 
+                        onClick={handleUnassign}
+                        className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
+                      >
+                        <UserMinus size={14} />
+                        <span>Unassign Selected</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-5 auto-rows-start">
-              {result.groups.map((group) => {
-                const overseer = publishers.find(p => p.id === group.overseerId);
-                const assistant = publishers.find(p => p.id === group.assistantId);
-                const members = group.publisherIds.length;
-                const eldersCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'E').length;
-                const msCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'MS').length;
-                const pioneerCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.publisherType === 'RP').length;
-                const totalActivity = group.publisherIds.reduce((sum, pid) => sum + (publishers.find(p => p.id === pid)?.activityScore || 0), 0);
+                {result.groups.map((group) => {
+                  const overseer = publishers.find(p => p.id === group.overseerId);
+                  const assistant = publishers.find(p => p.id === group.assistantId);
+                  const members = group.publisherIds.length;
+                  const eldersCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'E').length;
+                  const msCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'MS').length;
+                  const pioneerCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.publisherType === 'RP').length;
+                  const totalActivity = group.publisherIds.reduce((sum, pid) => sum + (publishers.find(p => p.id === pid)?.activityScore || 0), 0);
 
-                return (
-                  <div 
-                    key={group.id}
-                    className="bg-white border border-border rounded-[4px] p-4 shadow-sm hover:shadow-md transition-all flex flex-col h-full"
-                  >
-                    <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
-                       <div className="flex flex-col">
+                  return (
+                    <div 
+                      key={group.id}
+                      className="bg-white border border-border rounded-[4px] p-4 shadow-sm hover:shadow-md transition-all flex flex-col h-full"
+                    >
+                      <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
+                        <div className="flex flex-col">
                           <h3 className="text-[14px] font-bold uppercase tracking-wide">{group.name}</h3>
                           {selectedPublisherIds.length > 0 && !group.publisherIds.some(id => selectedPublisherIds.includes(id)) && (
                             <button 
@@ -937,8 +938,8 @@ export default function App() {
                               Move Selected Here
                             </button>
                           )}
-                       </div>
-                       <div className="flex gap-3 text-[9px] font-black text-text-sub uppercase border-l border-border pl-3 ml-1">
+                        </div>
+                        <div className="flex gap-3 text-[9px] font-black text-text-sub uppercase border-l border-border pl-3 ml-1">
                           <div className="flex flex-col items-center">
                             <span className="opacity-60">PPL</span>
                             <span className="text-[11px] text-text-main leading-none">{members}</span>
@@ -959,156 +960,155 @@ export default function App() {
                             <span className="opacity-60">STR</span>
                             <span className="text-[11px] leading-none">{totalActivity}</span>
                           </div>
-                       </div>
-                    </div>
-
-                    <div className="space-y-4 flex-1">
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase text-text-sub mb-1">Group Overseer</p>
-                          <div className={cn(
-                            "flex items-center gap-2 text-[13px] font-medium py-1",
-                            !overseer && "text-danger italic opacity-70"
-                          )}>
-                            {overseer ? (
-                              <div className="flex items-center justify-between w-full group/role">
-                                <div 
-                                  onClick={() => toggleSelection([overseer.id])}
-                                  className={cn(
-                                    "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
-                                    selectedPublisherIds.includes(overseer.id) ? "bg-accent-light" : "hover:bg-bg"
-                                  )}
-                                >
-                                  <span className="tag tag-e text-[9px] px-1 rounded-[2px] bg-role-e text-white font-black">E</span>
-                                  <span className={cn(selectedPublisherIds.includes(overseer.id) && "text-accent font-bold")}>{overseer.fullName}</span>
-                                </div>
-                                <button 
-                                  onClick={() => setGroupRole(group.id, overseer.id, 'none')}
-                                  className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
-                                  title="Unset as Overseer"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            ) : "No Overseer Assigned"}
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="text-[10px] font-bold uppercase text-text-sub mb-1">Assistant</p>
-                          <div className={cn(
-                            "flex items-center gap-2 text-[13px] font-medium py-1",
-                            !assistant && "text-danger italic opacity-70"
-                          )}>
-                            {assistant ? (
-                              <div className="flex items-center justify-between w-full group/role">
-                                <div 
-                                  onClick={() => toggleSelection([assistant.id])}
-                                  className={cn(
-                                    "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
-                                    selectedPublisherIds.includes(assistant.id) ? "bg-accent-light" : "hover:bg-bg"
-                                  )}
-                                >
-                                  <span className={cn(
-                                    "text-[9px] px-1 rounded-[2px] text-white font-black",
-                                    assistant.standing === 'E' ? "bg-role-e" : "bg-role-ms"
-                                  )}>
-                                    {assistant.standing}
-                                  </span>
-                                  <span className={cn(selectedPublisherIds.includes(assistant.id) && "text-accent font-bold")}>{assistant.fullName}</span>
-                                </div>
-                                <button 
-                                  onClick={() => setGroupRole(group.id, assistant.id, 'none')}
-                                  className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
-                                  title="Unset as Assistant"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            ) : "No Assistant Assigned"}
-                          </div>
                         </div>
                       </div>
 
-                      <div className="border-t border-border pt-3">
-                         <p className="text-[10px] font-bold uppercase text-text-sub mb-2">Members</p>
-                         <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-2">
-                            {/* Grouping families visually in the group card */}
-                            {Array.from(new Set(group.publisherIds
-                               .map(pid => publishers.find(p => p.id === pid)?.familyId)
-                               .filter(fid => fid && group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.familyId === fid).length > 1)
-                            )).map(fid => {
-                               const familyMembers = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.familyId === fid);
-                               const fName = publishers.find(p => p.familyId === fid)?.lastName || 'Family';
-                               return (
-                                 <div key={fid} className="p-2 bg-bg border-l-3 border-accent rounded-[3px] space-y-1 my-2">
+                      <div className="space-y-4 flex-1">
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase text-text-sub mb-1">Group Overseer</p>
+                            <div className={cn(
+                              "flex items-center gap-2 text-[13px] font-medium py-1",
+                              !overseer && "text-danger italic opacity-70"
+                            )}>
+                              {overseer ? (
+                                <div className="flex items-center justify-between w-full group/role">
+                                  <div 
+                                    onClick={() => toggleSelection([overseer.id])}
+                                    className={cn(
+                                      "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
+                                      selectedPublisherIds.includes(overseer.id) ? "bg-accent-light" : "hover:bg-bg"
+                                    )}
+                                  >
+                                    <span className="tag tag-e text-[9px] px-1 rounded-[2px] bg-role-e text-white font-black">E</span>
+                                    <span className={cn(selectedPublisherIds.includes(overseer.id) && "text-accent font-bold")}>{overseer.fullName}</span>
+                                  </div>
+                                  <button 
+                                    onClick={() => setGroupRole(group.id, overseer.id, 'none')}
+                                    className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
+                                    title="Unset as Overseer"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ) : "No Overseer Assigned"}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[10px] font-bold uppercase text-text-sub mb-1">Assistant</p>
+                            <div className={cn(
+                              "flex items-center gap-2 text-[13px] font-medium py-1",
+                              !assistant && "text-danger italic opacity-70"
+                            )}>
+                              {assistant ? (
+                                <div className="flex items-center justify-between w-full group/role">
+                                  <div 
+                                    onClick={() => toggleSelection([assistant.id])}
+                                    className={cn(
+                                      "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
+                                      selectedPublisherIds.includes(assistant.id) ? "bg-accent-light" : "hover:bg-bg"
+                                    )}
+                                  >
+                                    <span className={cn(
+                                      "text-[9px] px-1 rounded-[2px] text-white font-black",
+                                      assistant.standing === 'E' ? "bg-role-e" : "bg-role-ms"
+                                    )}>
+                                      {assistant.standing}
+                                    </span>
+                                    <span className={cn(selectedPublisherIds.includes(assistant.id) && "text-accent font-bold")}>{assistant.fullName}</span>
+                                  </div>
+                                  <button 
+                                    onClick={() => setGroupRole(group.id, assistant.id, 'none')}
+                                    className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
+                                    title="Unset as Assistant"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ) : "No Assistant Assigned"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-border pt-3">
+                          <p className="text-[10px] font-bold uppercase text-text-sub mb-2">Members</p>
+                          <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-2">
+                             {Array.from(new Set(group.publisherIds
+                                .map(pid => publishers.find(p => p.id === pid)?.familyId)
+                                .filter(fid => fid && group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.familyId === fid).length > 1)
+                             )).map(fid => {
+                                const familyMembers = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.familyId === fid);
+                                const fName = publishers.find(p => p.familyId === fid)?.lastName || 'Family';
+                                return (
+                                  <div key={fid} className="p-2 bg-bg border-l-3 border-accent rounded-[3px] space-y-1 my-2">
                                     <div className="flex justify-between items-center mb-1">
-                                       <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
-                                       <button 
-                                         onClick={() => toggleSelection(familyMembers)}
-                                         className="text-[9px] font-bold text-text-sub hover:text-accent uppercase"
-                                       >
-                                         {familyMembers.every(id => selectedPublisherIds.includes(id)) ? 'Deselect All' : 'Select All'}
-                                       </button>
+                                      <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
+                                      <button 
+                                        onClick={() => toggleSelection(familyMembers)}
+                                        className="text-[9px] font-bold text-text-sub hover:text-accent uppercase"
+                                      >
+                                        {familyMembers.every(id => selectedPublisherIds.includes(id)) ? 'Deselect All' : 'Select All'}
+                                      </button>
                                     </div>
                                     {familyMembers.map(pid => {
-                                       const p = publishers.find(pub => pub.id === pid);
-                                       if (!p) return null;
-                                       return (
-                                          <div 
-                                             key={pid} 
-                                             onClick={() => toggleSelection([pid])}
-                                             className={cn(
-                                               "flex justify-between items-center text-[12px] cursor-pointer transition-colors p-1 rounded group/member",
-                                               selectedPublisherIds.includes(pid) ? "bg-white text-accent font-bold" : "hover:bg-white/50"
-                                             )}
-                                          >
-                                             <div className="flex items-center gap-2">
-                                               <span>{p.firstName}</span>
-                                               {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
-                                             </div>
-                                             
-                                             <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
-                                                <button 
-                                                  onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }}
-                                                  title="Set as Overseer"
-                                                  className="w-4 h-4 flex items-center justify-center bg-role-e text-white rounded-[2px] hover:scale-110"
-                                                >
-                                                  <Shield size={8} />
-                                                </button>
-                                                <button 
-                                                  onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }}
-                                                  title="Set as Assistant"
-                                                  className="w-4 h-4 flex items-center justify-center bg-role-ms text-white rounded-[2px] hover:scale-110"
-                                                >
-                                                  <UserCheck size={8} />
-                                                </button>
-                                                <button 
-                                                  onClick={(e) => { e.stopPropagation(); toggleSelection([pid]); handleUnassign(); }}
-                                                  title="Remove from Group"
-                                                  className="w-4 h-4 flex items-center justify-center bg-danger text-white rounded-[2px] hover:scale-110"
-                                                >
-                                                  <UserMinus size={8} />
-                                                </button>
-                                             </div>
+                                      const p = publishers.find(pub => pub.id === pid);
+                                      if (!p) return null;
+                                      return (
+                                        <div 
+                                          key={pid} 
+                                          onClick={() => toggleSelection([pid])}
+                                          className={cn(
+                                            "flex justify-between items-center text-[12px] cursor-pointer transition-colors p-1 rounded group/member",
+                                            selectedPublisherIds.includes(pid) ? "bg-white text-accent font-bold" : "hover:bg-white/50"
+                                          )}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span>{p.firstName}</span>
+                                            {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
                                           </div>
-                                       );
+                                          
+                                          <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }}
+                                              title="Set as Overseer"
+                                              className="w-4 h-4 flex items-center justify-center bg-role-e text-white rounded-[2px] hover:scale-110"
+                                            >
+                                              <Shield size={8} />
+                                            </button>
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }}
+                                              title="Set as Assistant"
+                                              className="w-4 h-4 flex items-center justify-center bg-role-ms text-white rounded-[2px] hover:scale-110"
+                                            >
+                                              <UserCheck size={8} />
+                                            </button>
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); toggleSelection([pid]); handleUnassign(); }}
+                                              title="Remove from Group"
+                                              className="w-4 h-4 flex items-center justify-center bg-danger text-white rounded-[2px] hover:scale-110"
+                                            >
+                                              <UserMinus size={8} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
                                     })}
-                                 </div>
-                               );
-                            })}
-                            
-                            {group.publisherIds
-                              .filter(pid => pid !== group.overseerId && pid !== group.assistantId)
-                              .filter(pid => {
+                                  </div>
+                                );
+                             })}
+                             
+                             {group.publisherIds
+                               .filter(pid => pid !== group.overseerId && pid !== group.assistantId)
+                               .filter(pid => {
+                                  const p = publishers.find(pub => pub.id === pid);
+                                  if (!p?.familyId) return true;
+                                  return group.publisherIds.filter(otherId => publishers.find(pub => pub.id === otherId)?.familyId === p.familyId).length === 1;
+                               })
+                               .map(pid => {
                                  const p = publishers.find(pub => pub.id === pid);
-                                 if (!p?.familyId) return true;
-                                 return group.publisherIds.filter(otherId => publishers.find(pub => pub.id === otherId)?.familyId === p.familyId).length === 1;
-                              })
-                              .map(pid => {
-                                const p = publishers.find(pub => pub.id === pid);
-                                if (!p) return null;
-                                return (
+                                 if (!p) return null;
+                                 return (
                                    <div 
                                       key={pid} 
                                       onClick={() => toggleSelection([pid])}
@@ -1118,10 +1118,10 @@ export default function App() {
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
-                                         <div className="flex items-center gap-2">
-                                            {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
-                                            <span>{p.fullName}</span>
-                                         </div>
+                                        <div className="flex items-center gap-2">
+                                          {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
+                                          <span>{p.fullName}</span>
+                                        </div>
                                       </div>
 
                                       <div className="flex items-center gap-3">
@@ -1151,14 +1151,14 @@ export default function App() {
                                         <span className="text-[9px] text-text-sub opacity-50 font-mono italic">{p.familyId || 'Ind'}</span>
                                       </div>
                                     </div>
-                                );
-                              })}
-                         </div>
+                                 );
+                               })}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
               </div>
 
               {/* Unassigned Section */}
