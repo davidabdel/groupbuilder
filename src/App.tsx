@@ -20,7 +20,10 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
-  Filter
+  Filter,
+  Shield,
+  UserCheck,
+  UserMinus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Publisher, Standing, PublisherType, GroupResult } from './types';
@@ -85,6 +88,7 @@ export default function App() {
     const saved = localStorage.getItem('bmg_groupsCount');
     return saved ? Number(saved) : 10;
   });
+  const [mode, setMode] = useState<'full' | 'minor' | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof Publisher>('lastName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -137,7 +141,7 @@ export default function App() {
         complete: (results) => {
           const rawData = results.data as string[][];
           
-          // Find the actual header row (the one containing "First Name" or similar)
+          // Find the actual header row
           const headerRowIndex = rawData.findIndex(row => 
             row.some(cell => {
               const c = String(cell).toLowerCase();
@@ -146,11 +150,13 @@ export default function App() {
           );
 
           if (headerRowIndex === -1) {
-            // If we can't find a header row, try parsing with headers automatically as fallback
             Papa.parse(file, {
               header: true,
               skipEmptyLines: true,
-              complete: (results) => processImportedData(results.data),
+              complete: (results) => {
+                if (mode === 'minor') processGroupAdjustmentData(results.data);
+                else processImportedData(results.data);
+              },
             });
             return;
           }
@@ -166,7 +172,8 @@ export default function App() {
             return obj;
           });
           
-          processImportedData(mappedData);
+          if (mode === 'minor') processGroupAdjustmentData(mappedData);
+          else processImportedData(mappedData);
         },
       });
     } else if (['xlsx', 'xls'].includes(extension || '')) {
@@ -176,13 +183,80 @@ export default function App() {
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        // For Excel, we'll use sheet_to_json but also pass it through processImportedData
-        // which we will make more resilient.
         const data = XLSX.utils.sheet_to_json(ws);
-        processImportedData(data);
+        if (mode === 'minor') processGroupAdjustmentData(data);
+        else processImportedData(data);
       };
       reader.readAsBinaryString(file);
     }
+  };
+
+  const processGroupAdjustmentData = (data: any[]) => {
+    if (!data || data.length === 0) return;
+
+    const pubs: Publisher[] = [];
+    const groupsMap = new Map<string, Group>();
+
+    data.forEach((row, index) => {
+      const findVal = (keys: string[]) => {
+        const key = Object.keys(row).find(k => 
+          keys.some(v => k.toLowerCase().replace(/[\s_]/g, '') === v.toLowerCase().replace(/[\s_]/g, ''))
+        );
+        return key ? row[key] : '';
+      };
+
+      const groupName = findVal(['Group Name', 'Group']);
+      if (!groupName) return;
+
+      const firstName = findVal(['First Name', 'FirstName']) || '';
+      const lastName = findVal(['Last Name', 'LastName']) || '';
+      const role = String(findVal(['Role'])).toLowerCase();
+      const standing = findVal(['Standing']) || '';
+      const publisherType = findVal(['Publisher Type', 'PublisherType']) || '';
+      const familyId = findVal(['Family ID', 'FamilyID', 'Household Name']) || lastName || 'Unknown';
+      
+      const pId = `p-${index}-${Math.random().toString(36).substr(2, 9)}`;
+      const publisher: Publisher = {
+        id: pId,
+        firstName: String(firstName),
+        lastName: String(lastName),
+        fullName: `${firstName} ${lastName}`.trim(),
+        standing: String(standing),
+        publisherType: String(publisherType),
+        familyId: String(familyId),
+        mobile: String(findVal(['Mobile']) || ''),
+        email: String(findVal(['Email']) || ''),
+        canBeOverseer: String(standing).toUpperCase() === 'E',
+        canBeAssistant: String(standing).toUpperCase() === 'MS' || String(standing).toUpperCase() === 'E',
+        canSeparateFromFamily: false,
+        activityScore: 5,
+      };
+
+      pubs.push(publisher);
+
+      const gNameStr = String(groupName);
+      if (!groupsMap.has(gNameStr)) {
+        groupsMap.set(gNameStr, {
+          id: `g-${gNameStr}-${Math.random().toString(36).substr(2, 4)}`,
+          name: gNameStr,
+          overseerId: null,
+          assistantId: null,
+          publisherIds: []
+        });
+      }
+
+      const group = groupsMap.get(gNameStr)!;
+      group.publisherIds.push(pId);
+      if (role.includes('overseer')) group.overseerId = pId;
+      else if (role.includes('assistant')) group.assistantId = pId;
+    });
+
+    setPublishers(pubs);
+    setResult({
+      groups: Array.from(groupsMap.values()),
+      unassignedIds: []
+    });
+    setStep(4);
   };
 
   const processImportedData = (data: any[]) => {
@@ -354,11 +428,52 @@ export default function App() {
 
       return {
         ...prev,
-        groups: newGroups
+        groups: newGroups,
+        unassignedIds: (prev.unassignedIds || []).filter(id => !selectedPublisherIds.includes(id))
       };
     });
 
     setSelectedPublisherIds([]);
+  };
+
+  const handleUnassign = () => {
+    if (selectedPublisherIds.length === 0 || !result) return;
+
+    setResult(prev => {
+      if (!prev) return null;
+      
+      const newGroups = prev.groups.map(g => ({
+        ...g,
+        publisherIds: g.publisherIds.filter(id => !selectedPublisherIds.includes(id)),
+        overseerId: selectedPublisherIds.includes(g.overseerId || '') ? undefined : g.overseerId,
+        assistantId: selectedPublisherIds.includes(g.assistantId || '') ? undefined : g.assistantId,
+      }));
+
+      return {
+        ...prev,
+        groups: newGroups,
+        unassignedIds: [...new Set([...(prev.unassignedIds || []), ...selectedPublisherIds])]
+      };
+    });
+
+    setSelectedPublisherIds([]);
+  };
+
+  const setGroupRole = (groupId: string, pId: string, role: 'overseer' | 'assistant' | 'none') => {
+    setResult(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        groups: prev.groups.map(g => {
+          if (g.id !== groupId) return g;
+          return {
+            ...g,
+            overseerId: role === 'overseer' ? pId : (g.overseerId === pId ? undefined : g.overseerId),
+            assistantId: role === 'assistant' ? pId : (g.assistantId === pId ? undefined : g.assistantId),
+          };
+        })
+      };
+    });
   };
 
   const sortedPublishers = useMemo(() => {
@@ -497,37 +612,86 @@ export default function App() {
       {/* Main Content */}
       <main className="bg-bg p-5 overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="wait">
-          {/* STEP 1: UPLOAD */}
+          {/* STEP 1: MODE SELECTION & UPLOAD */}
           {step === 1 && (
             <motion.div 
               key="step1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="h-full flex flex-col items-center justify-center max-w-xl mx-auto space-y-6"
+              className="h-full flex flex-col items-center justify-center max-w-xl mx-auto space-y-8"
             >
-              <div className="text-center space-y-2">
-                <h2 className="text-[20px] font-bold tracking-tight">Import Congregation Data</h2>
-                <p className="text-[13px] text-text-sub">Select your publisher list to begin the optimization process.</p>
-              </div>
+              {!mode ? (
+                <>
+                  <div className="text-center space-y-2">
+                    <h2 className="text-[20px] font-bold tracking-tight">Select Operation Mode</h2>
+                    <p className="text-[13px] text-text-sub">Choose how you want to build your congregation groups.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6 w-full">
+                    <button 
+                      onClick={() => setMode('full')}
+                      className="flex flex-col items-center justify-center p-8 bg-white border border-border rounded-[4px] hover:border-accent hover:bg-accent-light/30 transition-all space-y-4 shadow-sm group"
+                    >
+                      <div className="w-12 h-12 bg-accent-light rounded-full flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
+                        <RefreshCw size={24} />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-[14px]">Full Reshuffle</p>
+                        <p className="text-[11px] text-text-sub mt-1">Start from scratch using a publisher list</p>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => setMode('minor')}
+                      className="flex flex-col items-center justify-center p-8 bg-white border border-border rounded-[4px] hover:border-accent hover:bg-accent-light/30 transition-all space-y-4 shadow-sm group"
+                    >
+                      <div className="w-12 h-12 bg-success/10 rounded-full flex items-center justify-center text-success group-hover:scale-110 transition-transform">
+                        <Settings2 size={24} />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-[14px]">Minor Adjustment</p>
+                        <p className="text-[11px] text-text-sub mt-1">Update existing groups from a structural export</p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-center space-y-2">
+                    <h2 className="text-[20px] font-bold tracking-tight">
+                      {mode === 'full' ? 'Import Publisher List' : 'Import Current Group Structure'}
+                    </h2>
+                    <p className="text-[13px] text-text-sub">
+                      {mode === 'full' 
+                        ? 'Select your CSV or Excel publisher list to begin.' 
+                        : 'Select the exported "Group Adjustments" Excel file.'}
+                    </p>
+                    <button 
+                      onClick={() => setMode(null)}
+                      className="text-[11px] font-bold text-accent uppercase tracking-wider hover:underline"
+                    >
+                      Change Mode
+                    </button>
+                  </div>
 
-              <div className="w-full relative group">
-                <input 
-                  type="file" 
-                  accept=".csv,.xlsx,.xls" 
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-                <div className="bg-white border border-border border-dashed rounded-[4px] p-12 transition-all duration-200 group-hover:border-accent group-hover:bg-accent-light/30 flex flex-col items-center space-y-4 shadow-sm">
-                  <div className="w-12 h-12 bg-accent-light rounded-[4px] flex items-center justify-center text-accent">
-                    <FileText size={24} />
+                  <div className="w-full relative group">
+                    <input 
+                      type="file" 
+                      accept=".csv,.xlsx,.xls" 
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="bg-white border border-border border-dashed rounded-[4px] p-12 transition-all duration-200 group-hover:border-accent group-hover:bg-accent-light/30 flex flex-col items-center space-y-4 shadow-sm">
+                      <div className="w-12 h-12 bg-accent-light rounded-[4px] flex items-center justify-center text-accent">
+                        <FileText size={24} />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[14px] font-bold">Import CSV or Excel</p>
+                        <p className="text-[11px] text-text-sub font-medium uppercase tracking-widest mt-1">Drop file anywhere</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[14px] font-bold">Import CSV or Excel</p>
-                    <p className="text-[11px] text-text-sub font-medium uppercase tracking-widest mt-1">Drop file anywhere</p>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </motion.div>
           )}
 
@@ -662,8 +826,32 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid grid-cols-2 gap-5 auto-rows-start"
+              className="space-y-6"
             >
+              {selectedPublisherIds.length > 0 && (
+                <div className="flex items-center justify-between p-3 bg-accent-light border border-accent rounded-[4px] shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[13px] font-bold text-accent">{selectedPublisherIds.length} Publishers Selected</span>
+                    <button 
+                      onClick={() => setSelectedPublisherIds([])}
+                      className="text-[11px] font-bold text-text-sub uppercase hover:text-accent"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handleUnassign}
+                      className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
+                    >
+                      <UserMinus size={14} />
+                      <span>Unassign Selected</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-5 auto-rows-start">
               {result.groups.map((group) => {
                 const overseer = publishers.find(p => p.id === group.overseerId);
                 const assistant = publishers.find(p => p.id === group.assistantId);
@@ -774,12 +962,38 @@ export default function App() {
                                              key={pid} 
                                              onClick={() => toggleSelection([pid])}
                                              className={cn(
-                                               "flex justify-between items-center text-[12px] cursor-pointer transition-colors p-1 rounded",
+                                               "flex justify-between items-center text-[12px] cursor-pointer transition-colors p-1 rounded group/member",
                                                selectedPublisherIds.includes(pid) ? "bg-white text-accent font-bold" : "hover:bg-white/50"
                                              )}
                                           >
-                                             <span>{p.firstName}</span>
-                                             {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
+                                             <div className="flex items-center gap-2">
+                                               <span>{p.firstName}</span>
+                                               {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
+                                             </div>
+                                             
+                                             <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                                                <button 
+                                                  onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }}
+                                                  title="Set as Overseer"
+                                                  className="w-4 h-4 flex items-center justify-center bg-role-e text-white rounded-[2px] hover:scale-110"
+                                                >
+                                                  <Shield size={8} />
+                                                </button>
+                                                <button 
+                                                  onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }}
+                                                  title="Set as Assistant"
+                                                  className="w-4 h-4 flex items-center justify-center bg-role-ms text-white rounded-[2px] hover:scale-110"
+                                                >
+                                                  <UserCheck size={8} />
+                                                </button>
+                                                <button 
+                                                  onClick={(e) => { e.stopPropagation(); toggleSelection([pid]); handleUnassign(); }}
+                                                  title="Remove from Group"
+                                                  className="w-4 h-4 flex items-center justify-center bg-danger text-white rounded-[2px] hover:scale-110"
+                                                >
+                                                  <UserMinus size={8} />
+                                                </button>
+                                             </div>
                                           </div>
                                        );
                                     })}
@@ -802,15 +1016,43 @@ export default function App() {
                                       key={pid} 
                                       onClick={() => toggleSelection([pid])}
                                       className={cn(
-                                        "flex justify-between items-center text-[13px] py-1 border-b border-border border-dotted last:border-b-0 cursor-pointer transition-colors px-1 rounded",
+                                        "flex justify-between items-center text-[13px] py-1 border-b border-border border-dotted last:border-b-0 cursor-pointer transition-colors px-1 rounded group/member",
                                         selectedPublisherIds.includes(pid) ? "bg-accent-light text-accent font-bold" : "hover:bg-bg"
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
-                                         {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
-                                         <span>{p.fullName}</span>
+                                         <div className="flex items-center gap-2">
+                                            {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
+                                            <span>{p.fullName}</span>
+                                         </div>
                                       </div>
-                                      <span className="text-[9px] text-text-sub opacity-50 font-mono italic">{p.familyId || 'Ind'}</span>
+
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }}
+                                            title="Set as Overseer"
+                                            className="w-4 h-4 flex items-center justify-center bg-role-e text-white rounded-[2px] hover:scale-110"
+                                          >
+                                            <Shield size={8} />
+                                          </button>
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }}
+                                            title="Set as Assistant"
+                                            className="w-4 h-4 flex items-center justify-center bg-role-ms text-white rounded-[2px] hover:scale-110"
+                                          >
+                                            <UserCheck size={8} />
+                                          </button>
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleSelection([pid]); handleUnassign(); }}
+                                            title="Remove from Group"
+                                            className="w-4 h-4 flex items-center justify-center bg-danger text-white rounded-[2px] hover:scale-110"
+                                          >
+                                            <UserMinus size={8} />
+                                          </button>
+                                        </div>
+                                        <span className="text-[9px] text-text-sub opacity-50 font-mono italic">{p.familyId || 'Ind'}</span>
+                                      </div>
                                     </div>
                                 );
                               })}
@@ -820,6 +1062,43 @@ export default function App() {
                   </div>
                 );
               })}
+              </div>
+
+              {/* Unassigned Section */}
+              {result.unassignedIds && result.unassignedIds.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[16px] font-black uppercase tracking-tight text-text-sub flex items-center gap-2">
+                      <UserMinus size={18} className="text-danger" />
+                      Unassigned Publishers
+                    </h3>
+                    <div className="bg-danger/10 text-danger px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest leading-none">
+                      {result.unassignedIds.length} Remaining
+                    </div>
+                  </div>
+                  <div className="bg-white border border-border border-dashed rounded-[4px] p-4">
+                    <div className="grid grid-cols-4 gap-3">
+                      {result.unassignedIds.map(pid => {
+                        const p = publishers.find(pub => pub.id === pid);
+                        if (!p) return null;
+                        return (
+                          <div 
+                            key={pid}
+                            onClick={() => toggleSelection([pid])}
+                            className={cn(
+                              "p-2 border border-border rounded-[3px] flex items-center gap-2 cursor-pointer transition-all",
+                              selectedPublisherIds.includes(pid) ? "bg-accent-light border-accent shadow-sm" : "hover:bg-bg hover:border-accent/30"
+                            )}
+                          >
+                            <span className="text-[12px] font-medium truncate">{p.fullName}</span>
+                            <span className="ml-auto text-[8px] font-mono text-text-sub opacity-50">{p.standing}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
