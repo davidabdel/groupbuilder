@@ -950,15 +950,24 @@ export default function App() {
                             !overseer && "text-danger italic opacity-70"
                           )}>
                             {overseer ? (
-                              <div 
-                                onClick={() => toggleSelection([overseer.id])}
-                                className={cn(
-                                  "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
-                                  selectedPublisherIds.includes(overseer.id) ? "bg-accent-light" : "hover:bg-bg"
-                                )}
-                              >
-                                <span className="tag tag-e text-[9px] px-1 rounded-[2px] bg-role-e text-white font-black">E</span>
-                                <span className={cn(selectedPublisherIds.includes(overseer.id) && "text-accent font-bold")}>{overseer.fullName}</span>
+                              <div className="flex items-center justify-between w-full group/role">
+                                <div 
+                                  onClick={() => toggleSelection([overseer.id])}
+                                  className={cn(
+                                    "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
+                                    selectedPublisherIds.includes(overseer.id) ? "bg-accent-light" : "hover:bg-bg"
+                                  )}
+                                >
+                                  <span className="tag tag-e text-[9px] px-1 rounded-[2px] bg-role-e text-white font-black">E</span>
+                                  <span className={cn(selectedPublisherIds.includes(overseer.id) && "text-accent font-bold")}>{overseer.fullName}</span>
+                                </div>
+                                <button 
+                                  onClick={() => setGroupRole(group.id, overseer.id, 'none')}
+                                  className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
+                                  title="Unset as Overseer"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </div>
                             ) : "No Overseer Assigned"}
                           </div>
@@ -971,20 +980,29 @@ export default function App() {
                             !assistant && "text-danger italic opacity-70"
                           )}>
                             {assistant ? (
-                              <div 
-                                onClick={() => toggleSelection([assistant.id])}
-                                className={cn(
-                                  "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
-                                  selectedPublisherIds.includes(assistant.id) ? "bg-accent-light" : "hover:bg-bg"
-                                )}
-                              >
-                                <span className={cn(
-                                  "text-[9px] px-1 rounded-[2px] text-white font-black",
-                                  assistant.standing === 'E' ? "bg-role-e" : "bg-role-ms"
-                                )}>
-                                  {assistant.standing}
-                                </span>
-                                <span className={cn(selectedPublisherIds.includes(assistant.id) && "text-accent font-bold")}>{assistant.fullName}</span>
+                              <div className="flex items-center justify-between w-full group/role">
+                                <div 
+                                  onClick={() => toggleSelection([assistant.id])}
+                                  className={cn(
+                                    "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
+                                    selectedPublisherIds.includes(assistant.id) ? "bg-accent-light" : "hover:bg-bg"
+                                  )}
+                                >
+                                  <span className={cn(
+                                    "text-[9px] px-1 rounded-[2px] text-white font-black",
+                                    assistant.standing === 'E' ? "bg-role-e" : "bg-role-ms"
+                                  )}>
+                                    {assistant.standing}
+                                  </span>
+                                  <span className={cn(selectedPublisherIds.includes(assistant.id) && "text-accent font-bold")}>{assistant.fullName}</span>
+                                </div>
+                                <button 
+                                  onClick={() => setGroupRole(group.id, assistant.id, 'none')}
+                                  className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
+                                  title="Unset as Assistant"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </div>
                             ) : "No Assistant Assigned"}
                           </div>
