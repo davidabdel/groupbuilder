@@ -924,30 +924,14 @@ export default function App() {
                       Clear
                     </button>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2 border-r border-accent/20 pr-4">
-                      <span className="text-[10px] font-black text-accent uppercase tracking-widest whitespace-nowrap">Set Sat Strength:</span>
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <button 
-                            key={s}
-                            onClick={() => handleBulkScoreUpdate(s)}
-                            className="w-6 h-6 rounded-[2px] bg-white border border-accent/30 text-accent text-[11px] font-bold hover:bg-accent hover:text-white transition-all"
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={handleUnassign}
-                        className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
-                      >
-                        <UserMinus size={14} />
-                        <span>Unassign Selected</span>
-                      </button>
-                    </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handleUnassign}
+                      className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
+                    >
+                      <UserMinus size={14} />
+                      <span>Unassign Selected</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1083,12 +1067,26 @@ export default function App() {
                                 return (
                                   <div key={fid} className="p-2 bg-bg border-l-3 border-accent rounded-[3px] space-y-1 my-2">
                                     <div className="flex justify-between items-center mb-1">
-                                      <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
+                                      <div className="flex flex-col">
+                                        <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
+                                        <div className="flex items-center gap-1 mt-1">
+                                          <span className="text-[8px] font-bold text-text-sub uppercase mr-1">Set All:</span>
+                                          {[1, 2, 3, 4, 5].map(s => (
+                                            <button 
+                                              key={s}
+                                              onClick={(e) => { e.stopPropagation(); familyMembers.forEach(pid => adjustActivity(pid, s)); }}
+                                              className="w-4 h-4 rounded-[1px] bg-white border border-accent/20 text-[9px] font-bold flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm"
+                                            >
+                                              {s}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
                                       <button 
                                         onClick={() => toggleSelection(familyMembers)}
                                         className="text-[9px] font-bold text-text-sub hover:text-accent uppercase"
                                       >
-                                        {familyMembers.every(id => selectedPublisherIds.includes(id)) ? 'Deselect All' : 'Select All'}
+                                        {familyMembers.every(id => selectedPublisherIds.includes(id)) ? 'Deselect' : 'Select'}
                                       </button>
                                     </div>
                                     {familyMembers.map(pid => {
@@ -1106,6 +1104,20 @@ export default function App() {
                                           <div className="flex items-center gap-2">
                                             <span>{p.firstName}</span>
                                             {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
+                                            <div className="flex items-center gap-0.5 ml-2">
+                                              {[1, 2, 3, 4, 5].map(s => (
+                                                <button 
+                                                  key={s}
+                                                  onClick={(e) => { e.stopPropagation(); adjustActivity(p.id, s); }}
+                                                  className={cn(
+                                                    "w-3.5 h-3.5 rounded-[1px] text-[8px] font-bold flex items-center justify-center transition-all",
+                                                    p.activityScore === s ? "bg-accent text-white" : "bg-bg text-text-sub hover:bg-accent-light"
+                                                  )}
+                                                >
+                                                  {s}
+                                                </button>
+                                              ))}
+                                            </div>
                                           </div>
                                           
                                           <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
@@ -1161,6 +1173,20 @@ export default function App() {
                                         <div className="flex items-center gap-2">
                                           {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
                                           <span>{p.fullName}</span>
+                                          <div className="flex items-center gap-0.5 ml-2">
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                              <button 
+                                                key={s}
+                                                onClick={(e) => { e.stopPropagation(); adjustActivity(p.id, s); }}
+                                                className={cn(
+                                                  "w-4 h-4 rounded-[1px] text-[9px] font-bold flex items-center justify-center transition-all",
+                                                  p.activityScore === s ? "bg-accent text-white" : "bg-bg text-text-sub hover:bg-accent-light"
+                                                )}
+                                              >
+                                                {s}
+                                              </button>
+                                            ))}
+                                          </div>
                                         </div>
                                       </div>
 
