@@ -33,7 +33,7 @@ import { generateGroups } from './services/groupLogic';
 import { cn } from './lib/utils';
 
 // Set worker for pdfjs
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 // --- Components ---
 
@@ -383,9 +383,9 @@ export default function App() {
         unassignedIds: []
       });
       setStep(4);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Error parsing PDF.");
+      alert(`Error parsing PDF: ${e.message || "Unknown error"}. If this persists, please try the Excel version of the file.`);
     }
   };
 
@@ -1006,7 +1006,7 @@ export default function App() {
                   <div className="w-full relative group">
                     <input 
                       type="file" 
-                      accept=".csv,.xlsx,.xls" 
+                      accept=".csv,.xlsx,.xls,.pdf" 
                       onChange={handleFileUpload}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
@@ -1015,7 +1015,7 @@ export default function App() {
                         <FileText size={24} />
                       </div>
                       <div className="text-center">
-                        <p className="text-[14px] font-bold">Import CSV or Excel</p>
+                        <p className="text-[14px] font-bold">Import CSV, Excel or PDF</p>
                         <p className="text-[11px] text-text-sub font-medium uppercase tracking-widest mt-1">Drop file anywhere</p>
                       </div>
                     </div>
