@@ -653,6 +653,28 @@ export default function App() {
     setPublishers(prev => prev.map(p => p.id === id ? { ...p, publisherType: p.publisherType === 'RP' ? 'P' : 'RP' } : p));
   };
 
+  const cycleStanding = (id: string) => {
+    setPublishers(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      let newStanding: Standing = '';
+      if (p.standing === '') newStanding = 'E';
+      else if (p.standing === 'E') newStanding = 'MS';
+      else newStanding = '';
+      
+      return { 
+        ...p, 
+        standing: newStanding,
+        // Sync these to follow the standing for default logic
+        canBeOverseer: newStanding === 'E',
+        canBeAssistant: newStanding === 'E' || newStanding === 'MS'
+      };
+    }));
+  };
+
+  const updateName = (id: string, newName: string) => {
+    setPublishers(prev => prev.map(p => p.id === id ? { ...p, fullName: newName } : p));
+  };
+
   const toggleRule = (id: string, field: keyof Pick<Publisher, 'canBeOverseer' | 'canBeAssistant' | 'canSeparateFromFamily'>) => {
     setPublishers(prev => prev.map(p => p.id === id ? { ...p, [field]: !p[field] } : p));
   };
@@ -1071,19 +1093,26 @@ export default function App() {
                           <td className="px-3 py-2">
                             <div className="flex items-center space-x-2">
                                <div className="flex flex-col gap-0.5 w-5 shrink-0">
-                                {p.standing && (
-                                   <span className={cn(
-                                    "text-[8px] font-black text-white px-0.5 rounded-[1px] text-center",
-                                    p.standing === 'E' ? "bg-role-e" : "bg-role-ms"
-                                   )}>
-                                    {p.standing}
-                                  </span>
-                                )}
+                                 <button 
+                                   onClick={() => cycleStanding(p.id)}
+                                   className={cn(
+                                    "text-[8px] font-black text-white px-0.5 rounded-[1px] text-center min-h-[12px] flex items-center justify-center transition-all",
+                                    p.standing === 'E' ? "bg-role-e" : p.standing === 'MS' ? "bg-role-ms" : "bg-slate-200 text-slate-400 hover:bg-slate-300"
+                                   )}
+                                   title="Click to cycle role (Elder, MS, None)"
+                                 >
+                                    {p.standing || '.'}
+                                  </button>
                                 {p.publisherType === 'RP' && (
                                   <span className="text-[8px] font-black text-white bg-role-rp px-0.5 rounded-[1px] text-center lowercase leading-none">rp</span>
                                 )}
                               </div>
-                              <span className="text-[13px] font-medium">{p.fullName}</span>
+                              <input 
+                                type="text"
+                                value={p.fullName}
+                                onChange={(e) => updateName(p.id, e.target.value)}
+                                className="text-[13px] font-medium bg-transparent border-b border-transparent hover:border-border focus:border-accent focus:bg-white outline-none px-1 py-0.5 w-full transition-all"
+                              />
                             </div>
                           </td>
                           <td className="px-3 py-2">
