@@ -394,30 +394,37 @@ export default function App() {
     const groups: Group[] = [];
 
     // Color helpers
-    const getARGB = (cell: ExcelJS.Cell) => {
-      const color = cell.font?.color;
-      if (!color) return null;
-      if (typeof color.argb === 'string') return color.argb;
-      // Handle theme colors if necessary (simplification for now based on ARGB finding)
-      return null;
+    const parseColor = (cell: ExcelJS.Cell) => {
+      const argb = getARGB(cell);
+      if (!argb) return null;
+      const r = parseInt(argb.substring(argb.length-6, argb.length-4), 16);
+      const g = parseInt(argb.substring(argb.length-4, argb.length-2), 16);
+      const b = parseInt(argb.substring(argb.length-2), 16);
+      return { r, g, b };
     };
 
     const isElder = (cell: ExcelJS.Cell) => {
-      const argb = getARGB(cell);
-      if (!argb) return false;
-      const g = parseInt(argb.substring(argb.length-4, argb.length-2), 16);
-      const r = parseInt(argb.substring(argb.length-6, argb.length-4), 16);
-      const b = parseInt(argb.substring(argb.length-2), 16);
-      return g > r && g > b && g > 120; // Greenish
+      const c = parseColor(cell);
+      if (!c) return false;
+      // Red: R is high
+      if (c.r > 150 && c.g < 100 && c.b < 100) return true; 
+      // Orange: R > 200, G > 100
+      if (c.r > 200 && c.g > 100 && c.b < 100) return true;
+      // Green: G is dominant
+      if (c.g > c.r && c.g > c.b && c.g > 120) return true;
+      // Light Blue: B and G are high
+      if (c.b > 200 && c.g > 150) return true;
+      return false;
     };
 
     const isMS = (cell: ExcelJS.Cell) => {
-      const argb = getARGB(cell);
-      if (!argb) return false;
-      const b = parseInt(argb.substring(argb.length-2), 16);
-      const r = parseInt(argb.substring(argb.length-6, argb.length-4), 16);
-      const g = parseInt(argb.substring(argb.length-4, argb.length-2), 16);
-      return b > r && b > g && b > 120; // Blueish
+      const c = parseColor(cell);
+      if (!c) return false;
+      // Dark Blue: B is dominant
+      if (c.b > c.r && c.b > c.g && c.b > 120) return true;
+      // Pink: R and B are high
+      if (c.r > 200 && c.b > 150) return true;
+      return false;
     };
 
     // Iterate columns for groups
@@ -640,6 +647,10 @@ export default function App() {
 
     setPublishers(standardized);
     setStep(2);
+  };
+
+  const togglePioneer = (id: string) => {
+    setPublishers(prev => prev.map(p => p.id === id ? { ...p, publisherType: p.publisherType === 'RP' ? 'P' : 'RP' } : p));
   };
 
   const toggleRule = (id: string, field: keyof Pick<Publisher, 'canBeOverseer' | 'canBeAssistant' | 'canSeparateFromFamily'>) => {
@@ -1049,6 +1060,7 @@ export default function App() {
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic">Publisher</th>
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Can Lead</th>
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Can Assist</th>
+                        <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Pioneer</th>
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center">Split Fam</th>
                         <th className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-sub italic text-center whitespace-nowrap">Activity (1-5)</th>
                       </tr>
@@ -1104,6 +1116,21 @@ export default function App() {
                                   p.canBeAssistant ? "translate-x-3.5" : "translate-x-0"
                                 )} />
                               </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                             <div className="flex justify-center">
+                               <button 
+                                onClick={() => togglePioneer(p.id)}
+                                className={cn(
+                                  "px-2 py-0.5 rounded-[2px] text-[9px] font-black uppercase tracking-widest border transition-all",
+                                  p.publisherType === 'RP' 
+                                    ? "bg-role-rp text-white border-role-rp" 
+                                    : "bg-transparent text-text-sub border-border hover:border-text-sub"
+                                )}
+                              >
+                                RP
+                              </button>
                             </div>
                           </td>
                           <td className="px-3 py-2">
@@ -1388,7 +1415,15 @@ export default function App() {
                                         >
                                           <div className="flex items-center gap-2">
                                             <span>{p.firstName}</span>
-                                            {p.publisherType === 'RP' && <span className="text-[8px] font-bold text-role-rp uppercase">RP</span>}
+                                            <button 
+                                              onClick={(e) => { e.stopPropagation(); togglePioneer(p.id); }}
+                                              className={cn(
+                                                "text-[8px] font-bold px-1 rounded-[1px] uppercase transition-all",
+                                                p.publisherType === 'RP' ? "bg-role-rp text-white" : "text-text-sub hover:bg-black/5 border border-border"
+                                              )}
+                                            >
+                                              RP
+                                            </button>
                                             <div className="flex items-center gap-0.5 ml-2">
                                               {[1, 2, 3, 4, 5].map(s => (
                                                 <button 
