@@ -26,9 +26,14 @@ import {
   UserMinus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Publisher, Standing, PublisherType, GroupResult } from './types';
+import * as ExcelJS from 'exceljs';
+import * as pdfjsLib from 'pdfjs-dist';
+import { Publisher, Standing, PublisherType, GroupResult, Group } from './types';
 import { generateGroups } from './services/groupLogic';
 import { cn } from './lib/utils';
+
+// Set worker for pdfjs
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // --- Components ---
 
@@ -176,45 +181,320 @@ export default function App() {
           else processImportedData(mappedData);
         },
       });
-    } else if (['xlsx', 'xls'].includes(extension || '')) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        
-        // Get raw data as 2D array to find the header row
-        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-        
-        // Look for the row containing common headers
-        const headerRowIndex = rawData.findIndex(row => 
-          Array.isArray(row) && row.some(cell => {
-            const c = String(cell || '').toLowerCase();
-            return c.includes('first name') || c.includes('firstname') || c.includes('last name') || (c === 'group');
-          })
-        );
+    } else if (['xlsx', 'xls', 'pdf'].includes(extension || '')) {
+      if (extension === 'pdf') {
+        processPDFFile(file);
+        return;
+      }
+      // Special handling for Liverpool Grid format / Styled Excel
+      if (extension === 'xlsx') {
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          const buffer = evt.target?.result as ArrayBuffer;
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(buffer);
+          
+          const ws = workbook.getWorksheet("Proposed Groups") || workbook.getWorksheet(2) || workbook.getWorksheet(1);
+          
+          if (ws && isGridFormat(ws)) {
+            processLiverpoolGridFile(ws);
+            return;
+          }
 
-        let finalData: any[];
-        if (headerRowIndex !== -1) {
-          const headers = rawData[headerRowIndex].map(h => String(h || '').trim());
-          finalData = rawData.slice(headerRowIndex + 1).map(row => {
-            const obj: any = {};
-            if (Array.isArray(row)) {
-              headers.forEach((header, i) => {
-                if (header) obj[header] = row[i];
-              });
-            }
-            return obj;
+          // Fallback to existing XLSX parser if not grid
+          const bstr = new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '');
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const worksheet = wb.Sheets[wsname];
+          const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          handleStandardXlsx(rawData, worksheet);
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // Legacy XLS handling
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+          handleStandardXlsx(rawData, ws);
+        };
+        reader.readAsBinaryString(file);
+      }
+    }
+  };
+
+  const isGridFormat = (ws: ExcelJS.Worksheet) => {
+    let groupHeaderCount = 0;
+    for (let c = 1; c <= 10; c++) {
+      const val = String(ws.getCell(1, c).value || '').toLowerCase();
+      if (val.includes('group')) groupHeaderCount++;
+    }
+    return groupHeaderCount >= 3;
+  };
+
+  const handleStandardXlsx = (rawData: any[][], ws: XLSX.WorkSheet) => {
+    const headerRowIndex = rawData.findIndex(row => 
+      Array.isArray(row) && row.some(cell => {
+        const c = String(cell || '').toLowerCase();
+        return c.includes('first name') || c.includes('firstname') || c.includes('last name') || (c === 'group');
+      })
+    );
+
+    let finalData: any[];
+    if (headerRowIndex !== -1) {
+      const headers = rawData[headerRowIndex].map(h => String(h || '').trim());
+      finalData = rawData.slice(headerRowIndex + 1).map(row => {
+        const obj: any = {};
+        if (Array.isArray(row)) {
+          headers.forEach((header, i) => {
+            if (header) obj[header] = row[i];
           });
-        } else {
-          finalData = XLSX.utils.sheet_to_json(ws);
+        }
+        return obj;
+      });
+    } else {
+      finalData = XLSX.utils.sheet_to_json(ws);
+    }
+
+    if (mode === 'minor') processGroupAdjustmentData(finalData);
+    else processImportedData(finalData);
+  };
+
+  const processPDFFile = async (file: File) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      const textContent = await page.getTextContent();
+      const items = textContent.items as any[];
+
+      if (items.length === 0) {
+        alert("No text found in the PDF. It might be a scanned image.");
+        return;
+      }
+
+      // Sort items by Y (top to bottom) then X (left to right)
+      const sortedItems = [...items].sort((a, b) => {
+        // Group by Y with 5px tolerance
+        if (Math.abs(b.transform[5] - a.transform[5]) < 5) {
+          return a.transform[4] - b.transform[4];
+        }
+        return b.transform[5] - a.transform[5];
+      });
+
+      // Find group headers (Row 1)
+      const headerItemIndices = sortedItems
+        .map((item, idx) => ({ str: item.str.toLowerCase(), idx }))
+        .filter(item => item.str.includes('group'))
+        .map(item => item.idx);
+
+      if (headerItemIndices.length === 0) {
+        alert("Could not find group headers in the PDF.");
+        return;
+      }
+
+      // Determine column boundaries based on headers
+      const columnHeaders = headerItemIndices.map(idx => sortedItems[idx]);
+      const columnOffsets = columnHeaders.map(h => h.transform[4]);
+      
+      const pubs: Publisher[] = [];
+      const groupsMap = new Map<number, Group>();
+
+      columnHeaders.forEach((h, i) => {
+        groupsMap.set(i, {
+          id: `g-${i}-${Math.random().toString(36).substr(2, 4)}`,
+          name: h.str,
+          overseerId: null,
+          assistantId: null,
+          publisherIds: []
+        });
+      });
+
+      // Map other items to groups based on X coordinate
+      sortedItems.forEach((item, idx) => {
+        if (headerItemIndices.includes(idx)) return;
+        const str = item.str.trim();
+        if (!str || str.toLowerCase().includes('elders:') || str.toLowerCase().includes('ms:') || str.toLowerCase().includes('pubs:')) return;
+
+        // Find which column this item belongs to
+        const x = item.transform[4];
+        let bestCol = 0;
+        let minDist = Math.abs(x - columnOffsets[0]);
+        for (let i = 1; i < columnOffsets.length; i++) {
+          const dist = Math.abs(x - columnOffsets[i]);
+          if (dist < minDist) {
+            minDist = dist;
+            bestCol = i;
+          }
         }
 
-        if (mode === 'minor') processGroupAdjustmentData(finalData);
-        else processImportedData(finalData);
+        // Tolerance for X: if it's way off, it's probably not in a group column
+        if (minDist > 100) return;
+
+        let name = str;
+        let isOverseer = false;
+        let isAssistant = false;
+
+        if (name.includes('(GO)')) {
+          isOverseer = true;
+          name = name.replace('(GO)', '').trim();
+        }
+        if (name.includes('(GA)')) {
+          isAssistant = true;
+          name = name.replace('(GA)', '').trim();
+        }
+        name = name.replace(/\(\?\)/g, '').trim();
+
+        // Note: Standing detection via color is very hard in PDF.js TextContent
+        // We rely on the (GA)/(GO) and manual review for now
+        const pId = `p-pdf-${idx}-${Math.random().toString(36).substr(2, 5)}`;
+        
+        const parts = name.split(' ');
+        const lastName = parts.length > 1 ? parts.pop() || '' : name;
+        const firstName = parts.join(' ');
+
+        const publisher: Publisher = {
+          id: pId,
+          firstName,
+          lastName,
+          fullName: name,
+          standing: '', // Unknown from PDF text alone
+          publisherType: 'P',
+          familyId: lastName || 'Unknown',
+          canBeOverseer: false, 
+          canBeAssistant: false,
+          canSeparateFromFamily: false,
+          activityScore: 5
+        };
+
+        const group = groupsMap.get(bestCol)!;
+        pubs.push(publisher);
+        group.publisherIds.push(pId);
+        if (isOverseer) group.overseerId = pId;
+        if (isAssistant) group.assistantId = pId;
+      });
+
+      setPublishers(pubs);
+      setResult({
+        groups: Array.from(groupsMap.values()),
+        unassignedIds: []
+      });
+      setStep(4);
+    } catch (e) {
+      console.error(e);
+      alert("Error parsing PDF.");
+    }
+  };
+
+  const processLiverpoolGridFile = (worksheet: ExcelJS.Worksheet) => {
+    const pubs: Publisher[] = [];
+    const groups: Group[] = [];
+
+    // Color helpers
+    const getARGB = (cell: ExcelJS.Cell) => {
+      const color = cell.font?.color;
+      if (!color) return null;
+      if (typeof color.argb === 'string') return color.argb;
+      // Handle theme colors if necessary (simplification for now based on ARGB finding)
+      return null;
+    };
+
+    const isElder = (cell: ExcelJS.Cell) => {
+      const argb = getARGB(cell);
+      if (!argb) return false;
+      const g = parseInt(argb.substring(argb.length-4, argb.length-2), 16);
+      const r = parseInt(argb.substring(argb.length-6, argb.length-4), 16);
+      const b = parseInt(argb.substring(argb.length-2), 16);
+      return g > r && g > b && g > 120; // Greenish
+    };
+
+    const isMS = (cell: ExcelJS.Cell) => {
+      const argb = getARGB(cell);
+      if (!argb) return false;
+      const b = parseInt(argb.substring(argb.length-2), 16);
+      const r = parseInt(argb.substring(argb.length-6, argb.length-4), 16);
+      const g = parseInt(argb.substring(argb.length-4, argb.length-2), 16);
+      return b > r && b > g && b > 120; // Blueish
+    };
+
+    // Iterate columns for groups
+    for (let c = 1; c <= (worksheet.columnCount || 12); c++) {
+      const headerVal = String(worksheet.getCell(1, c).value || '').trim();
+      if (!headerVal || !headerVal.toLowerCase().includes('group')) continue;
+
+      const group: Group = {
+        id: `g-${headerVal}-${Math.random().toString(36).substr(2, 4)}`,
+        name: headerVal,
+        overseerId: null,
+        assistantId: null,
+        publisherIds: []
       };
-      reader.readAsBinaryString(file);
+
+      // Iterate rows
+      for (let r = 2; r <= (worksheet.rowCount || 50); r++) {
+        const cell = worksheet.getCell(r, c);
+        const rawValue = String(cell.value || '').trim();
+        if (!rawValue || rawValue.toLowerCase().includes('elders:') || rawValue.toLowerCase().includes('ms:') || rawValue.toLowerCase().includes('pubs:')) continue;
+
+        // Skip crossed out (leaving)
+        if (cell.font?.strike) continue;
+
+        let name = rawValue;
+        let isOverseer = false;
+        let isAssistant = false;
+
+        if (name.includes('(GO)')) {
+          isOverseer = true;
+          name = name.replace('(GO)', '').trim();
+        }
+        if (name.includes('(GA)')) {
+          isAssistant = true;
+          name = name.replace('(GA)', '').trim();
+        }
+        name = name.replace(/\(\?\)/g, '').trim();
+
+        const standing: Standing = isElder(cell) ? 'E' : (isMS(cell) ? 'MS' : '');
+        
+        // Name splitting
+        const parts = name.split(' ');
+        const lastName = parts.length > 1 ? parts.pop() || '' : name;
+        const firstName = parts.join(' ');
+
+        const pId = `p-${c}-${r}-${Math.random().toString(36).substr(2, 5)}`;
+        const publisher: Publisher = {
+          id: pId,
+          firstName,
+          lastName,
+          fullName: name,
+          standing,
+          publisherType: 'P',
+          familyId: lastName || 'Unknown',
+          canBeOverseer: standing === 'E',
+          canBeAssistant: standing === 'MS' || standing === 'E',
+          canSeparateFromFamily: false,
+          activityScore: 5
+        };
+
+        pubs.push(publisher);
+        group.publisherIds.push(pId);
+        if (isOverseer) group.overseerId = pId;
+        if (isAssistant) group.assistantId = pId;
+      }
+      groups.push(group);
+    }
+
+    if (pubs.length > 0) {
+      setPublishers(pubs);
+      setResult({
+        groups,
+        unassignedIds: []
+      });
+      setStep(4);
+    } else {
+      alert("No publishers found in the grid format. Please check the file.");
     }
   };
 
@@ -708,8 +988,13 @@ export default function App() {
                     <p className="text-[13px] text-text-sub">
                       {mode === 'full' 
                         ? 'Select your CSV or Excel publisher list to begin.' 
-                        : 'Select the exported "Group Adjustments" Excel file.'}
+                        : 'Select the exported "Group Adjustments" Excel or PDF file.'}
                     </p>
+                    {mode === 'minor' && (
+                      <div className="mt-2 text-[11px] text-accent/70 bg-accent-light/50 px-3 py-1.5 rounded-[3px] border border-accent/20 max-w-sm mx-auto">
+                        <p><strong>Tip:</strong> The Excel version of the "Proposed Groups" file works best as it contains hidden color-coding for Elders and MS that the app can read automatically!</p>
+                      </div>
+                    )}
                     <button 
                       onClick={() => setMode(null)}
                       className="text-[11px] font-bold text-accent uppercase tracking-wider hover:underline"
