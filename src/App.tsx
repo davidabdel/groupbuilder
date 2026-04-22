@@ -680,7 +680,18 @@ export default function App() {
   };
 
   const adjustActivity = (id: string, score: number) => {
-    setPublishers(prev => prev.map(p => p.id === id ? { ...p, activityScore: score } : p));
+    const target = publishers.find(p => p.id === id);
+    if (!target) return;
+
+    setPublishers(prev => prev.map(p => {
+      // Sync by familyId OR same last name if familyId is missing
+      const isSameFamily = target.familyId ? p.familyId === target.familyId : p.lastName.toLowerCase() === target.lastName.toLowerCase();
+      
+      if (p.id === id || isSameFamily) {
+        return { ...p, activityScore: score };
+      }
+      return p;
+    }));
   };
 
   const handleGenerate = () => {
@@ -1329,14 +1340,35 @@ export default function App() {
 
                               {/* Controls */}
                               <div className="flex items-center justify-between opacity-0 group-hover/member:opacity-100 transition-opacity">
-                                <div className="flex gap-1">
+                                <div className="flex gap-0.5">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); cycleStanding(pid); }}
+                                    className={cn(
+                                      "text-[8px] font-black px-1 rounded-[1px] uppercase transition-all flex items-center gap-0.5",
+                                      p.standing === 'E' ? "bg-role-e text-white" : p.standing === 'MS' ? "bg-role-ms text-white" : "bg-bg text-text-sub hover:bg-slate-200"
+                                    )}
+                                    title="Toggle Standing (Elder -> MS -> None)"
+                                  >
+                                    {p.standing || "Role"}
+                                  </button>
+                                  <div className="w-[1px] h-3 bg-border mx-0.5" />
                                   <button onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }} className={cn("text-[8px] font-bold px-1 rounded-[1px] uppercase", group.overseerId === pid ? "bg-danger text-white" : "text-text-sub hover:bg-danger/10")}>GO</button>
                                   <button onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }} className={cn("text-[8px] font-bold px-1 rounded-[1px] uppercase", group.assistantId === pid ? "bg-accent text-white" : "text-text-sub hover:bg-accent/10")}>GA</button>
                                   <button onClick={(e) => { e.stopPropagation(); togglePioneer(pid); }} className="text-[8px] font-bold px-1 rounded-[1px] uppercase text-text-sub hover:bg-role-rp/10">RP</button>
                                 </div>
                                 <div className="flex gap-0.5">
                                   {[1, 2, 3, 4, 5].map(s => (
-                                    <button key={s} onClick={(e) => { e.stopPropagation(); adjustActivity(pid, s); }} className={cn("w-3 h-3 rounded-[1px] text-[7px] font-bold flex items-center justify-center", p.activityScore === s ? "bg-accent text-white" : "bg-slate-100 text-slate-400")}>{s}</button>
+                                    <button 
+                                      key={s} 
+                                      onClick={(e) => { e.stopPropagation(); adjustActivity(pid, s); }} 
+                                      className={cn(
+                                        "w-3 h-3 rounded-[1px] text-[7px] font-bold flex items-center justify-center transition-all", 
+                                        p.activityScore === s ? "bg-accent text-white" : "bg-slate-100 text-slate-400"
+                                      )}
+                                      title="Click to set household activity score"
+                                    >
+                                      {s}
+                                    </button>
                                   ))}
                                 </div>
                               </div>
