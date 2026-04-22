@@ -1245,372 +1245,154 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* STEP 4: GROUPS */}
+          {/* STEP 4: GROUPS DASHBOARD */}
           {step === 4 && result && (
             <motion.div 
               key="step4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-6"
+              className="flex flex-col gap-4 h-[calc(100vh-140px)]"
             >
-              {selectedPublisherIds.length > 0 && (
-                <div className="flex items-center justify-between p-3 bg-accent-light border border-accent rounded-[4px] shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[13px] font-bold text-accent">{selectedPublisherIds.length} Publishers Selected</span>
-                    <button 
-                      onClick={() => setSelectedPublisherIds([])}
-                      className="text-[11px] font-bold text-text-sub uppercase hover:text-accent"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={handleUnassign}
-                      className="px-3 py-1.5 bg-danger text-white rounded-[3px] text-[12px] font-bold hover:bg-opacity-90 transition-all uppercase flex items-center gap-2"
-                    >
-                      <UserMinus size={14} />
-                      <span>Unassign Selected</span>
-                    </button>
-                  </div>
+              {/* Toolbar */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                   <h2 className="text-[18px] font-bold uppercase tracking-tight">Group Dashboard</h2>
+                   {selectedPublisherIds.length > 0 && (
+                     <div className="flex gap-2 items-center">
+                        <span className="bg-accent text-white px-2 py-0.5 rounded text-[10px] font-bold">{selectedPublisherIds.length} Selected</span>
+                        <button onClick={() => setSelectedPublisherIds([])} className="text-[10px] font-bold text-text-sub uppercase hover:underline">Clear</button>
+                        <button onClick={handleUnassign} className="text-[10px] font-bold text-danger uppercase hover:underline">Unassign</button>
+                     </div>
+                   )}
                 </div>
-              )}
+              </div>
 
-              <div className="grid grid-cols-2 gap-5 auto-rows-start">
+              {/* Grid Dashboard */}
+              <div className="flex gap-4 overflow-x-auto pb-4 items-start h-full scroll-smooth">
                 {result.groups.map((group) => {
-                  const overseer = publishers.find(p => p.id === group.overseerId);
-                  const assistant = publishers.find(p => p.id === group.assistantId);
-                  const members = group.publisherIds.length;
                   const eldersCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'E').length;
                   const msCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'MS').length;
-                  const pioneerCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.publisherType === 'RP').length;
-                  const totalActivity = group.publisherIds.reduce((sum, pid) => sum + (publishers.find(p => p.id === pid)?.activityScore || 0), 0);
+                  const totalPubs = group.publisherIds.length;
 
                   return (
                     <div 
                       key={group.id}
-                      className="bg-white border border-border rounded-[4px] p-4 shadow-sm hover:shadow-md transition-all flex flex-col h-full"
+                      className="bg-white border border-border rounded-[4px] shadow-sm flex flex-col w-[260px] shrink-0 h-full overflow-hidden"
                     >
-                      <div className="flex justify-between items-center mb-3 border-b border-border pb-2">
-                        <div className="flex flex-col">
-                          <h3 className="text-[14px] font-bold uppercase tracking-wide">{group.name}</h3>
+                      {/* Group Header */}
+                      <div className="p-3 border-b border-border bg-slate-50 sticky top-0 z-10">
+                        <div className="flex justify-between items-center mb-1">
+                          <h3 className="text-[12px] font-black uppercase tracking-widest text-accent truncate">{group.name}</h3>
                           {selectedPublisherIds.length > 0 && !group.publisherIds.some(id => selectedPublisherIds.includes(id)) && (
                             <button 
                               onClick={() => handleMoveToGroup(group.id)}
-                              className="text-[10px] font-bold text-accent hover:underline uppercase text-left mt-1"
+                              className="text-[9px] font-black bg-accent text-white px-1.5 py-0.5 rounded-[2px] uppercase"
                             >
-                              Move Selected Here
+                              Move
                             </button>
                           )}
                         </div>
-                        <div className="flex gap-3 text-[9px] font-black text-text-sub uppercase border-l border-border pl-3 ml-1">
-                          <div className="flex flex-col items-center">
-                            <span className="opacity-60">PPL</span>
-                            <span className="text-[11px] text-text-main leading-none">{members}</span>
-                          </div>
-                          <div className="flex flex-col items-center text-role-e">
-                            <span className="opacity-60">E</span>
-                            <span className="text-[11px] leading-none">{eldersCount}</span>
-                          </div>
-                          <div className="flex flex-col items-center text-role-ms">
-                            <span className="opacity-60">MS</span>
-                            <span className="text-[11px] leading-none">{msCount}</span>
-                          </div>
-                          <div className="flex flex-col items-center text-role-rp">
-                            <span className="opacity-60">RP</span>
-                            <span className="text-[11px] leading-none">{pioneerCount}</span>
-                          </div>
-                          <div className="flex flex-col items-center text-accent">
-                            <span className="opacity-60">STR</span>
-                            <span className="text-[11px] leading-none">{totalActivity}</span>
-                          </div>
-                        </div>
                       </div>
 
-                      <div className="space-y-4 flex-1">
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-[10px] font-bold uppercase text-text-sub mb-1">Group Overseer</p>
-                            <div className={cn(
-                              "flex items-center gap-2 text-[13px] font-medium py-1",
-                              !overseer && "text-danger italic opacity-70"
-                            )}>
-                              {overseer ? (
-                                <div className="flex items-center justify-between w-full group/role">
-                                  <div 
-                                    onClick={() => toggleSelection([overseer.id])}
-                                    className={cn(
-                                      "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
-                                      selectedPublisherIds.includes(overseer.id) ? "bg-accent-light" : "hover:bg-bg"
-                                    )}
-                                  >
-                                    <span className="tag tag-e text-[9px] px-1 rounded-[2px] bg-role-e text-white font-black">E</span>
-                                    <span className={cn(selectedPublisherIds.includes(overseer.id) && "text-accent font-bold")}>{overseer.fullName}</span>
-                                  </div>
-                                  <button 
-                                    onClick={() => setGroupRole(group.id, overseer.id, 'none')}
-                                    className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
-                                    title="Unset as Overseer"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              ) : "No Overseer Assigned"}
-                            </div>
-                          </div>
+                      {/* Publisher List */}
+                      <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
+                        {group.publisherIds.map((pid) => {
+                          const p = publishers.find(x => x.id === pid);
+                          if (!p) return null;
+                          const isSelected = selectedPublisherIds.includes(pid);
 
-                          <div>
-                            <p className="text-[10px] font-bold uppercase text-text-sub mb-1">Assistant</p>
-                            <div className={cn(
-                              "flex items-center gap-2 text-[13px] font-medium py-1",
-                              !assistant && "text-danger italic opacity-70"
-                            )}>
-                              {assistant ? (
-                                <div className="flex items-center justify-between w-full group/role">
-                                  <div 
-                                    onClick={() => toggleSelection([assistant.id])}
-                                    className={cn(
-                                      "flex items-center gap-2 cursor-pointer transition-colors px-1 py-0.5 rounded",
-                                      selectedPublisherIds.includes(assistant.id) ? "bg-accent-light" : "hover:bg-bg"
-                                    )}
-                                  >
-                                    <span className={cn(
-                                      "text-[9px] px-1 rounded-[2px] text-white font-black",
-                                      assistant.standing === 'E' ? "bg-role-e" : "bg-role-ms"
-                                    )}>
-                                      {assistant.standing}
-                                    </span>
-                                    <span className={cn(selectedPublisherIds.includes(assistant.id) && "text-accent font-bold")}>{assistant.fullName}</span>
-                                  </div>
-                                  <button 
-                                    onClick={() => setGroupRole(group.id, assistant.id, 'none')}
-                                    className="p-1 text-danger opacity-0 group-hover/role:opacity-60 hover:!opacity-100 transition-opacity"
-                                    title="Unset as Assistant"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
+                          return (
+                            <div 
+                              key={pid}
+                              onClick={() => toggleSelection([pid])}
+                              className={cn(
+                                "group/member relative p-2 rounded-[3px] border transition-all cursor-pointer flex flex-col gap-1",
+                                isSelected ? "bg-accent-light border-accent ring-1 ring-accent" : "bg-white border-transparent hover:border-border hover:bg-bg"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                  <span className={cn(
+                                    "text-[13px] font-bold tracking-tight truncate",
+                                    p.standing === 'E' ? "text-danger" : p.standing === 'MS' ? "text-accent" : "text-text-main"
+                                  )}>
+                                    {p.fullName}
+                                  </span>
+                                  {p.id === group.overseerId && <span className="text-[9px] font-black text-danger uppercase opacity-80 shrink-0">(GO)</span>}
+                                  {p.id === group.assistantId && <span className="text-[9px] font-black text-accent uppercase opacity-80 shrink-0">(GA)</span>}
                                 </div>
-                              ) : "No Assistant Assigned"}
+                                {p.publisherType === 'RP' && (
+                                  <span className="text-[8px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>
+                                )}
+                              </div>
+
+                              {/* Controls */}
+                              <div className="flex items-center justify-between opacity-0 group-hover/member:opacity-100 transition-opacity">
+                                <div className="flex gap-1">
+                                  <button onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }} className={cn("text-[8px] font-bold px-1 rounded-[1px] uppercase", group.overseerId === pid ? "bg-danger text-white" : "text-text-sub hover:bg-danger/10")}>GO</button>
+                                  <button onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }} className={cn("text-[8px] font-bold px-1 rounded-[1px] uppercase", group.assistantId === pid ? "bg-accent text-white" : "text-text-sub hover:bg-accent/10")}>GA</button>
+                                  <button onClick={(e) => { e.stopPropagation(); togglePioneer(pid); }} className="text-[8px] font-bold px-1 rounded-[1px] uppercase text-text-sub hover:bg-role-rp/10">RP</button>
+                                </div>
+                                <div className="flex gap-0.5">
+                                  {[1, 2, 3, 4, 5].map(s => (
+                                    <button key={s} onClick={(e) => { e.stopPropagation(); adjustActivity(pid, s); }} className={cn("w-3 h-3 rounded-[1px] text-[7px] font-bold flex items-center justify-center", p.activityScore === s ? "bg-accent text-white" : "bg-slate-100 text-slate-400")}>{s}</button>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Sticky Footer Stats */}
+                      <div className="p-3 border-t border-border bg-slate-50 text-[10px] font-black text-text-sub uppercase tracking-wider space-y-1">
+                        <div className="flex justify-between border-b border-border/50 pb-1">
+                          <span>Elders</span>
+                          <span className={cn(eldersCount >= 2 ? "text-success" : "text-danger")}>{eldersCount}</span>
                         </div>
-
-                        <div className="border-t border-border pt-3">
-                          <p className="text-[10px] font-bold uppercase text-text-sub mb-2">Members</p>
-                          <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-2">
-                             {Array.from(new Set(group.publisherIds
-                                .map(pid => publishers.find(p => p.id === pid)?.familyId)
-                                .filter(fid => fid && group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.familyId === fid).length > 1)
-                             )).map(fid => {
-                                const familyMembers = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.familyId === fid);
-                                const fName = publishers.find(p => p.familyId === fid)?.lastName || 'Family';
-                                return (
-                                  <div key={fid} className="p-2 bg-bg border-l-3 border-accent rounded-[3px] space-y-1 my-2">
-                                    <div className="flex justify-between items-center mb-1">
-                                      <div className="flex flex-col">
-                                        <p className="text-[10px] font-bold text-accent uppercase">{fName} Household</p>
-                                        <div className="flex items-center gap-1 mt-1">
-                                          <span className="text-[8px] font-bold text-text-sub uppercase mr-1">Set All:</span>
-                                          {[1, 2, 3, 4, 5].map(s => (
-                                            <button 
-                                              key={s}
-                                              onClick={(e) => { e.stopPropagation(); familyMembers.forEach(pid => adjustActivity(pid, s)); }}
-                                              className="w-4 h-4 rounded-[1px] bg-white border border-accent/20 text-[9px] font-bold flex items-center justify-center hover:bg-accent hover:text-white transition-all shadow-sm"
-                                            >
-                                              {s}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                      <button 
-                                        onClick={() => toggleSelection(familyMembers)}
-                                        className="text-[9px] font-bold text-text-sub hover:text-accent uppercase"
-                                      >
-                                        {familyMembers.every(id => selectedPublisherIds.includes(id)) ? 'Deselect' : 'Select'}
-                                      </button>
-                                    </div>
-                                    {familyMembers.map(pid => {
-                                      const p = publishers.find(pub => pub.id === pid);
-                                      if (!p) return null;
-                                      return (
-                                        <div 
-                                          key={pid} 
-                                          onClick={() => toggleSelection([pid])}
-                                          className={cn(
-                                            "flex justify-between items-center text-[12px] cursor-pointer transition-colors p-1 rounded group/member",
-                                            selectedPublisherIds.includes(pid) ? "bg-white text-accent font-bold" : "hover:bg-white/50"
-                                          )}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <span>{p.firstName}</span>
-                                            <button 
-                                              onClick={(e) => { e.stopPropagation(); togglePioneer(p.id); }}
-                                              className={cn(
-                                                "text-[8px] font-bold px-1 rounded-[1px] uppercase transition-all",
-                                                p.publisherType === 'RP' ? "bg-role-rp text-white" : "text-text-sub hover:bg-black/5 border border-border"
-                                              )}
-                                            >
-                                              RP
-                                            </button>
-                                            <div className="flex items-center gap-0.5 ml-2">
-                                              {[1, 2, 3, 4, 5].map(s => (
-                                                <button 
-                                                  key={s}
-                                                  onClick={(e) => { e.stopPropagation(); adjustActivity(p.id, s); }}
-                                                  className={cn(
-                                                    "w-3.5 h-3.5 rounded-[1px] text-[8px] font-bold flex items-center justify-center transition-all",
-                                                    p.activityScore === s ? "bg-accent text-white" : "bg-bg text-text-sub hover:bg-accent-light"
-                                                  )}
-                                                >
-                                                  {s}
-                                                </button>
-                                              ))}
-                                            </div>
-                                          </div>
-                                          
-                                          <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
-                                            <button 
-                                              onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }}
-                                              title="Set as Overseer"
-                                              className="w-4 h-4 flex items-center justify-center bg-role-e text-white rounded-[2px] hover:scale-110"
-                                            >
-                                              <Shield size={8} />
-                                            </button>
-                                            <button 
-                                              onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }}
-                                              title="Set as Assistant"
-                                              className="w-4 h-4 flex items-center justify-center bg-role-ms text-white rounded-[2px] hover:scale-110"
-                                            >
-                                              <UserCheck size={8} />
-                                            </button>
-                                            <button 
-                                              onClick={(e) => { e.stopPropagation(); toggleSelection([pid]); handleUnassign(); }}
-                                              title="Remove from Group"
-                                              className="w-4 h-4 flex items-center justify-center bg-danger text-white rounded-[2px] hover:scale-110"
-                                            >
-                                              <UserMinus size={8} />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                             })}
-                             
-                             {group.publisherIds
-                               .filter(pid => pid !== group.overseerId && pid !== group.assistantId)
-                               .filter(pid => {
-                                  const p = publishers.find(pub => pub.id === pid);
-                                  if (!p?.familyId) return true;
-                                  return group.publisherIds.filter(otherId => publishers.find(pub => pub.id === otherId)?.familyId === p.familyId).length === 1;
-                               })
-                               .map(pid => {
-                                 const p = publishers.find(pub => pub.id === pid);
-                                 if (!p) return null;
-                                 return (
-                                   <div 
-                                      key={pid} 
-                                      onClick={() => toggleSelection([pid])}
-                                      className={cn(
-                                        "flex justify-between items-center text-[13px] py-1 border-b border-border border-dotted last:border-b-0 cursor-pointer transition-colors px-1 rounded group/member",
-                                        selectedPublisherIds.includes(pid) ? "bg-accent-light text-accent font-bold" : "hover:bg-bg"
-                                      )}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-2">
-                                          {p.publisherType === 'RP' && <span className="text-[9px] font-black text-white bg-role-rp px-1 rounded-[1px]">RP</span>}
-                                          <span>{p.fullName}</span>
-                                          <div className="flex items-center gap-0.5 ml-2">
-                                            {[1, 2, 3, 4, 5].map(s => (
-                                              <button 
-                                                key={s}
-                                                onClick={(e) => { e.stopPropagation(); adjustActivity(p.id, s); }}
-                                                className={cn(
-                                                  "w-4 h-4 rounded-[1px] text-[9px] font-bold flex items-center justify-center transition-all",
-                                                  p.activityScore === s ? "bg-accent text-white" : "bg-bg text-text-sub hover:bg-accent-light"
-                                                )}
-                                              >
-                                                {s}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-3">
-                                        <div className="flex gap-1 opacity-0 group-hover/member:opacity-100 transition-opacity">
-                                          <button 
-                                            onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'overseer'); }}
-                                            title="Set as Overseer"
-                                            className="w-4 h-4 flex items-center justify-center bg-role-e text-white rounded-[2px] hover:scale-110"
-                                          >
-                                            <Shield size={8} />
-                                          </button>
-                                          <button 
-                                            onClick={(e) => { e.stopPropagation(); setGroupRole(group.id, pid, 'assistant'); }}
-                                            title="Set as Assistant"
-                                            className="w-4 h-4 flex items-center justify-center bg-role-ms text-white rounded-[2px] hover:scale-110"
-                                          >
-                                            <UserCheck size={8} />
-                                          </button>
-                                          <button 
-                                            onClick={(e) => { e.stopPropagation(); toggleSelection([pid]); handleUnassign(); }}
-                                            title="Remove from Group"
-                                            className="w-4 h-4 flex items-center justify-center bg-danger text-white rounded-[2px] hover:scale-110"
-                                          >
-                                            <UserMinus size={8} />
-                                          </button>
-                                        </div>
-                                        <span className="text-[9px] text-text-sub opacity-50 font-mono italic">{p.familyId || 'Ind'}</span>
-                                      </div>
-                                    </div>
-                                 );
-                               })}
-                          </div>
+                        <div className="flex justify-between border-b border-border/50 pb-1">
+                          <span>Min Servants</span>
+                          <span className={cn(msCount >= 1 ? "text-success" : "text-warning")}>{msCount}</span>
+                        </div>
+                        <div className="flex justify-between pt-0.5 text-accent">
+                          <span>Total Pubs</span>
+                          <span>{totalPubs}</span>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-              </div>
 
-              {/* Unassigned Section */}
-              {result.unassignedIds && result.unassignedIds.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[16px] font-black uppercase tracking-tight text-text-sub flex items-center gap-2">
-                      <UserMinus size={18} className="text-danger" />
-                      Unassigned Publishers
-                    </h3>
-                    <div className="bg-danger/10 text-danger px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest leading-none">
-                      {result.unassignedIds.length} Remaining
+                {/* Unassigned Pool as a Column */}
+                {result.unassignedIds && result.unassignedIds.length > 0 && (
+                  <div className="bg-bg border border-danger/30 rounded-[4px] shadow-sm flex flex-col w-[260px] shrink-0 h-full overflow-hidden">
+                    <div className="p-3 border-b border-danger/20 bg-danger/5 sticky top-0 z-10 flex justify-between items-center">
+                       <h3 className="text-[12px] font-black uppercase tracking-widest text-danger">Unassigned Pool</h3>
+                       <div className="bg-danger text-white text-[9px] px-1.5 rounded-full font-black">{result.unassignedIds.length}</div>
                     </div>
-                  </div>
-                  <div className="bg-white border border-border border-dashed rounded-[4px] p-4">
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
                       {result.unassignedIds.map(pid => {
-                        const p = publishers.find(pub => pub.id === pid);
+                        const p = publishers.find(x => x.id === pid);
                         if (!p) return null;
                         return (
                           <div 
-                            key={pid}
-                            onClick={() => toggleSelection([pid])}
+                            key={pid} 
+                            onClick={() => toggleSelection([pid])} 
                             className={cn(
-                              "p-2 border border-border rounded-[3px] flex items-center gap-2 cursor-pointer transition-all",
-                              selectedPublisherIds.includes(pid) ? "bg-accent-light border-accent shadow-sm" : "hover:bg-bg hover:border-accent/30"
+                              "p-2 border rounded-[3px] transition-all cursor-pointer bg-white text-[13px] font-medium flex items-center justify-between", 
+                              selectedPublisherIds.includes(pid) ? "border-accent bg-accent-light shadow-sm" : "border-border hover:border-accent/40"
                             )}
                           >
-                            <span className="text-[12px] font-medium truncate">{p.fullName}</span>
-                            <span className="ml-auto text-[8px] font-mono text-text-sub opacity-50">{p.standing}</span>
+                            <span>{p.fullName}</span>
+                            <span className="text-[9px] text-text-sub opacity-50">{p.standing}</span>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
