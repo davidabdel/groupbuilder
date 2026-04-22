@@ -1285,6 +1285,7 @@ export default function App() {
                   const eldersCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'E').length;
                   const msCount = group.publisherIds.filter(pid => publishers.find(p => p.id === pid)?.standing === 'MS').length;
                   const totalPubs = group.publisherIds.length;
+                  const weightedScore = group.publisherIds.reduce((sum, pid) => sum + (publishers.find(p => p.id === pid)?.activityScore || 0), 0);
 
                   return (
                     <div 
@@ -1387,11 +1388,16 @@ export default function App() {
                           <span>Min Servants</span>
                           <span className={cn(msCount >= 1 ? "text-success" : "text-warning")}>{msCount}</span>
                         </div>
-                        <div className="flex justify-between pt-0.5 text-accent">
+                        <div className="flex justify-between border-b border-border/50 pb-1 text-accent">
                           <span>Total Pubs</span>
                           <span>{totalPubs}</span>
                         </div>
+                        <div className="flex justify-between pt-0.5 text-accent border-t border-border/30">
+                          <span>Weighted Score</span>
+                          <span>{weightedScore}</span>
+                        </div>
                       </div>
+                    </div>
                     </div>
                   );
                 })}
